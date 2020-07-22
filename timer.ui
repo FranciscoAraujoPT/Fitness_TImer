@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<interface>
+  <object id="window" class="GtkWindow">
+    <property name="visible">True</property>
+    <property name="title">Grid</property>
+    <child>
+      <object id="grid" class="GtkGrid">
+        <property name="visible">True</property>
+        <child>
+          <object id="dezenas_min" class="GtkLabel">
+            <property name="visible">True</property>
+            <property name="margin-top">160</property>
+            <property name="margin-left">225</property>
+          </object>
+          <packing>
+            <property name="left-attach">0</property>
+            <property name="top-attach">0</property>
+          </packing>
+        </child>
+        <child>
+          <object id="unidades_min" class="GtkLabel">
+            <property name="visible">True</property>
+            <property name="margin-top">160</property>
+          </object>
+          <packing>
+            <property name="left-attach">1</property>
+            <property name="top-attach">0</property>
+          </packing>
+        </child>
+        <child>
+          <object id="divisao" class="GtkLabel">
+            <property name="visible">True</property>
+            <property name="label">:</property>
+            <property name="margin-top">160</property>
+          </object>
+          <packing>
+            <property name="left-attach">2</property>
+            <property name="top-attach">0</property>
+          </packing>
+        </child>
+        <child>
+          <object id="dezenas_seg" class="GtkLabel">
+            <property name="visible">True</property>
+            <property name="margin-top">160</property>
+          </object>
+          <packing>
+            <property name="left-attach">3</property>
+            <property name="top-attach">0</property>
+          </packing>
+        </child>
+        <child>
+          <object id="unidades_seg" class="GtkLabel">
+            <property name="visible">True</property>
+            <property name="margin-top">160</property>
+          </object>
+          <packing>
+            <property name="left-attach">4</property>
+            <property name="top-attach">0</property>
+          </packing>
+        </child>
+      </object>
+    </child>
+  </object>
+</interface>
