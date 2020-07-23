@@ -26,17 +26,17 @@ typedef struct _labelSetup
 
 }labelSetup;
 
-static void iniciacao_timer(labelSetup *Label, gpointer   data);
-static void timer(labelSetup *Label, gpointer   data);
+static void iniciacao_timer(gpointer   data);
+static void timer(gpointer   data);
 int main (int argc, char *argv[]);
-void static menu();
+void static menu(gpointer   data);
 
 static void test(gpointer   data)
 {
   g_print("hello\n");
 }
 
-static void apagar_janela(GObject *window, gpointer   data){
+static void apagar_janela(gpointer window){
 
   if(window == NULL){
     return;
@@ -59,8 +59,10 @@ static void subtrair(GObject *Label, gpointer   data)
   gtk_label_set_text(GTK_LABEL(Label), digito);
 }
 
-static void somarDmin(labelSetup *Label, gpointer   data)
+static void somarDmin(gpointer data)
 {
+  labelSetup *Label = data;
+
   int aux = atoi(gtk_label_get_text(GTK_LABEL(Label->mimD)));
   aux++;
 
@@ -74,8 +76,10 @@ static void somarDmin(labelSetup *Label, gpointer   data)
 
 }
 
-static void somarUmin(labelSetup *Label, gpointer   data)
+static void somarUmin(gpointer data)
 {
+  labelSetup *Label = data;
+
   int aux = atoi(gtk_label_get_text(GTK_LABEL(Label->mimU)));
   int aux2 = atoi(gtk_label_get_text(GTK_LABEL(Label->mimD)));
   aux++;
@@ -84,7 +88,7 @@ static void somarUmin(labelSetup *Label, gpointer   data)
   if(aux == 10 && aux2 == 5){
     return;
   } else if(aux == 10){
-    somarDmin(Label, data);
+    somarDmin(Label);
     aux = 0;
   }
 
@@ -94,8 +98,10 @@ static void somarUmin(labelSetup *Label, gpointer   data)
 
 }
 
-static void somarDseg(labelSetup *Label, gpointer   data)
+static void somarDseg(gpointer data)
 {
+  labelSetup *Label = data;
+
   int aux = atoi(gtk_label_get_text(GTK_LABEL(Label->segD)));
   int aux2 = atoi(gtk_label_get_text(GTK_LABEL(Label->mimU)));
   int aux3 = atoi(gtk_label_get_text(GTK_LABEL(Label->mimD)));
@@ -105,7 +111,7 @@ static void somarDseg(labelSetup *Label, gpointer   data)
     return;
   } else if(aux == 6){
     aux = 0;
-    somarUmin(Label, data);
+    somarUmin(Label);
   }
 
   char digito[2];
@@ -114,8 +120,11 @@ static void somarDseg(labelSetup *Label, gpointer   data)
 
 }
 
-static void somarUseg(labelSetup *Label, gpointer   data)
+static void somarUseg(gpointer data)
 {
+
+  labelSetup *Label = data;
+
   int aux = atoi(gtk_label_get_text(GTK_LABEL(Label->segU)));
   int aux2 = atoi(gtk_label_get_text(GTK_LABEL(Label->segD)));
   int aux3 = atoi(gtk_label_get_text(GTK_LABEL(Label->mimU)));
@@ -127,19 +136,82 @@ static void somarUseg(labelSetup *Label, gpointer   data)
   if(aux3 == 9 && aux4 == 5 && aux == 10 && aux2 == 5){
     return;
   }else if(aux == 10 && aux2 == 5){
-    somarUmin(Label, data);
+    somarUmin(Label);
     aux = 0;
     aux2 = 0;
     sprintf(digito, "%d", aux2);
     gtk_label_set_text(GTK_LABEL(Label->segD), digito);
 
   } else if(aux == 10){
-    somarDseg(Label, data);
+    somarDseg(Label);
     aux = 0;
   }
 
   sprintf(digito, "%d", aux);
   gtk_label_set_text(GTK_LABEL(Label->segU), digito);
+
+}
+
+void static final_timer(gpointer data)
+{
+  labelSetup* Label = data;
+  GtkBuilder *builder;
+  GtkStyleContext *context;
+  GObject *label;
+  GObject *button;
+  GError *error = NULL;
+
+  builder = gtk_builder_new ();
+  if (gtk_builder_add_from_file (builder, "final_timer.ui", &error) == 0)
+  {
+    g_printerr ("Error loading file: %s\n", error->message);
+    g_clear_error (&error);
+    return;
+  }
+
+  apagar_janela(Label->window);
+
+  GtkCssProvider *provider = gtk_css_provider_new ();
+  gtk_css_provider_load_from_path (provider, "mystyle.css", NULL);  
+
+  Label->window = gtk_builder_get_object(builder, "window");
+  gtk_window_fullscreen (GTK_WINDOW(Label->window));
+  context = gtk_widget_get_style_context (GTK_WIDGET(Label->window));
+  gtk_style_context_add_provider (context, GTK_STYLE_PROVIDER(provider), GTK_STYLE_PROVIDER_PRIORITY_USER);
+  g_signal_connect_swapped (Label->window, "destroy", G_CALLBACK (apagar_janela), Label->window);
+
+  label= gtk_builder_get_object (builder, "Acabou");
+  context = gtk_widget_get_style_context (GTK_WIDGET(label));
+  gtk_style_context_add_provider (context, GTK_STYLE_PROVIDER(provider), GTK_STYLE_PROVIDER_PRIORITY_USER);
+
+  Label->mimD = gtk_builder_get_object (builder, "dezenas_min");
+  gtk_label_set_text(GTK_LABEL(Label->mimD), "0");
+  context = gtk_widget_get_style_context (GTK_WIDGET(Label->mimD));
+  gtk_style_context_add_provider (context, GTK_STYLE_PROVIDER(provider), GTK_STYLE_PROVIDER_PRIORITY_USER);
+
+  Label->mimU = gtk_builder_get_object (builder, "unidades_min");
+  gtk_label_set_text(GTK_LABEL(Label->mimU), "0");
+  context = gtk_widget_get_style_context (GTK_WIDGET(Label->mimU));
+  gtk_style_context_add_provider (context, GTK_STYLE_PROVIDER(provider), GTK_STYLE_PROVIDER_PRIORITY_USER);
+
+  label= gtk_builder_get_object (builder, "divisao");
+  context = gtk_widget_get_style_context (GTK_WIDGET(label));
+  gtk_style_context_add_provider (context, GTK_STYLE_PROVIDER(provider), GTK_STYLE_PROVIDER_PRIORITY_USER);
+
+  Label->segD = gtk_builder_get_object (builder, "dezenas_seg");
+  gtk_label_set_text(GTK_LABEL(Label->segD), "1");
+  context = gtk_widget_get_style_context (GTK_WIDGET(Label->segD));
+  gtk_style_context_add_provider (context, GTK_STYLE_PROVIDER(provider), GTK_STYLE_PROVIDER_PRIORITY_USER);
+
+  Label->segU = gtk_builder_get_object (builder, "unidades_seg");
+  gtk_label_set_text(GTK_LABEL(Label->segU), "0");
+  context = gtk_widget_get_style_context (GTK_WIDGET(Label->segU));
+  gtk_style_context_add_provider (context, GTK_STYLE_PROVIDER(provider), GTK_STYLE_PROVIDER_PRIORITY_USER);
+  
+  button = gtk_builder_get_object (builder, "quit");
+  context = gtk_widget_get_style_context (GTK_WIDGET(button));
+  gtk_style_context_add_provider (context, GTK_STYLE_PROVIDER(provider), GTK_STYLE_PROVIDER_PRIORITY_USER);
+  g_signal_connect_swapped (button, "clicked", G_CALLBACK (menu), Label->window);
 
 }
 
@@ -181,7 +253,7 @@ gboolean update_label_time (gpointer data)
 
   if(contador() == G_SOURCE_REMOVE){
     g_source_remove(Label->id);
-    menu(Label->window, Label);
+    final_timer(Label);
   }
   
   sprintf(digito, "%d", minD);
@@ -198,14 +270,15 @@ gboolean update_label_time (gpointer data)
 
   if(iniciacao == TRUE && segD == 0 && segU == 0){
     g_source_remove(Label->id);
-    timer(Label, Label);
+    timer(Label);
   }
 
   return G_SOURCE_CONTINUE;
 }
 
-static void timer(labelSetup *Label, gpointer   data)
+static void timer(gpointer data)
 {
+  labelSetup *Label = data; 
   GtkBuilder *builder;
   GtkStyleContext *context;
   GObject *label;
@@ -225,7 +298,7 @@ static void timer(labelSetup *Label, gpointer   data)
   minU = aux_minU;
   minD = aux_minD;
   
-  apagar_janela(Label->window, data);
+  apagar_janela(Label->window);
 
   GtkCssProvider *provider = gtk_css_provider_new ();
   gtk_css_provider_load_from_path (provider, "timer.css", NULL);  
@@ -271,8 +344,9 @@ static void timer(labelSetup *Label, gpointer   data)
 }
 
 
-static void iniciacao_timer(labelSetup *Label, gpointer   data)
+static void iniciacao_timer(gpointer   data)
 {
+  labelSetup* Label = data;
   GtkBuilder *builder;
   GtkStyleContext *context;
   GObject *label;
@@ -293,7 +367,7 @@ static void iniciacao_timer(labelSetup *Label, gpointer   data)
 
   segD = 1; //countdown de 10s
 
-  apagar_janela(Label->window, data);
+  apagar_janela(Label->window);
 
   GtkCssProvider *provider = gtk_css_provider_new ();
   gtk_css_provider_load_from_path (provider, "timer.css", NULL);  
@@ -322,7 +396,7 @@ static void iniciacao_timer(labelSetup *Label, gpointer   data)
   Label->id = g_timeout_add_seconds(1, update_label_time, Label);
 }
 
-static void setup(GObject *window, gpointer   data)
+static void setup(gpointer window)
 {
   GtkBuilder *builder;
   GtkStyleContext *context;
@@ -339,7 +413,7 @@ static void setup(GObject *window, gpointer   data)
     return;
   }
 
-  apagar_janela(window, data);
+  apagar_janela(window);
 
   GtkCssProvider *provider = gtk_css_provider_new ();
   gtk_css_provider_load_from_path (provider, "mystyle.css", NULL);
@@ -424,19 +498,19 @@ static void setup(GObject *window, gpointer   data)
 }
 
 
-static void modo_normal(GObject *window, gpointer   data)
+static void modo_normal(gpointer window)
 {
   modo = 0;
-  menu(window, data);
+  menu(window);
 }
 
-static void modo_tabata(GObject *window, gpointer   data)
+static void modo_tabata(gpointer window)
 {
   modo = 1;
-  menu(window, data);
+  menu(window);
 }
 
-static void modos (GObject *window, gpointer   data)
+static void modos (gpointer window)
 {
   GtkBuilder *builder;
   GtkStyleContext *context; 
@@ -453,7 +527,7 @@ static void modos (GObject *window, gpointer   data)
     return;
   }
 
-  apagar_janela(window, data);
+  apagar_janela(window);
 
   GtkCssProvider *provider = gtk_css_provider_new ();
   gtk_css_provider_load_from_path (provider, "mystyle.css", NULL);
@@ -486,7 +560,7 @@ static void modos (GObject *window, gpointer   data)
 
 }
 
-void static menu(GObject *window, gpointer   data)
+void static menu(gpointer window)
 {
   GtkBuilder *builder;
   GtkStyleContext *context;
@@ -503,7 +577,7 @@ void static menu(GObject *window, gpointer   data)
     return;
   }
 
-  apagar_janela(window, data);
+  apagar_janela(window);
 
   GtkCssProvider *provider = gtk_css_provider_new ();
   gtk_css_provider_load_from_path (provider, "mystyle.css", NULL);
@@ -543,15 +617,14 @@ void static menu(GObject *window, gpointer   data)
   button = gtk_builder_get_object (builder, "quit");
   context = gtk_widget_get_style_context (GTK_WIDGET(button));
   gtk_style_context_add_provider (context, GTK_STYLE_PROVIDER(provider), GTK_STYLE_PROVIDER_PRIORITY_USER);
-  g_signal_connect (button, "clicked", G_CALLBACK (gtk_main_quit), NULL);
+  g_signal_connect_swapped (button, "clicked", G_CALLBACK (gtk_main_quit), NULL);
 
 }
 
 int main (int argc, char *argv[])
 {
   gtk_init (&argc, &argv);
-  GObject *window = NULL;
-  menu(window, NULL);
+  menu(NULL);
   gtk_main ();
 
   return 0;
