@@ -3,31 +3,52 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-int modo = 0;
-int aux_segU = 0;
-int aux_segD = 0;
-int aux_minU = 0;
-int aux_minD = 0;
-short int segU = 0;
-short int segD = 0;
-short int minU = 0;
-short int minD = 0;
-gboolean iniciacao = FALSE;
-gboolean final = FALSE;
+gboolean modo = FALSE;
+gboolean block = FALSE;
+gboolean block2 = FALSE;
 
-typedef struct _labelSetup
+typedef struct _structBuilder
 {
   GObject *label;
+  GObject *label_rest;
+  GObject* button;
   gulong id;
   GObject *window;
   GtkBuilder* builder;
+  
+  short int segU;
+  short int segD;
+  short int minU;
+  short int minD;
 
-}labelSetup;
+  short int segU_rest;
+  short int segD_rest;
+  short int minU_rest;
+  short int minD_rest;
+   
+  short int aux_segU;
+  short int aux_segD;
+  short int aux_minU;
+  short int aux_minD;
 
-static void iniciacao_timer(labelSetup* Label);
-static void timer(labelSetup* Label);
+  short int aux_segU_rest;
+  short int aux_segD_rest;
+  short int aux_minU_rest;
+  short int aux_minD_rest;
+
+  short int nRondas;
+  short int countdown;
+
+  gboolean work;
+
+}structBuilder;
+
+static void iniciacao_timer(structBuilder* st);
+static void timer(structBuilder* st);
+static void timer_tabata(structBuilder* st);
+gboolean update_label_time_rest (gpointer data);
 int main (int argc, char *argv[]);
-void static menu(labelSetup* Label);
+void static menu(structBuilder* st);
 
 static void test(gpointer   data)
 {
@@ -56,6 +77,14 @@ static void esconderFinal(gpointer builder)
   gtk_widget_hide(GTK_WIDGET(button));
 }
 
+static void esconderTimer_Tabata(gpointer builder)
+{
+  GObject* label;
+
+  label = gtk_builder_get_object (builder, "Tempo_timer_rest");
+  gtk_widget_hide(GTK_WIDGET(label));
+}
+
 static void esconderTimer(gpointer builder)
 {
   GObject* label;
@@ -72,33 +101,55 @@ static void esconderCountdown(gpointer builder)
   gtk_widget_hide(GTK_WIDGET(label));
 }
 
-static void esconderSetup(labelSetup* Label)
+static void esconderRondas(gpointer builder)
 {
   GObject* label;
   GObject* button;
 
-  label = gtk_builder_get_object (Label->builder, "Tempo");
+  label = gtk_builder_get_object (builder, "LabelRondas");
   gtk_widget_hide(GTK_WIDGET(label));
-  button = gtk_builder_get_object (Label->builder, "buttonDmimPlus");
+  label = gtk_builder_get_object (builder, "Rondas");
+  gtk_widget_hide(GTK_WIDGET(label));
+  button = gtk_builder_get_object (builder, "buttonRondasPlus");
   gtk_widget_hide(GTK_WIDGET(button));
-  button = gtk_builder_get_object (Label->builder, "buttonDmimMinus");
-  gtk_widget_hide(GTK_WIDGET(button));
-  button = gtk_builder_get_object (Label->builder, "buttonUmimPlus");
-  gtk_widget_hide(GTK_WIDGET(button));
-  button = gtk_builder_get_object (Label->builder, "buttonUmimMinus");
-  gtk_widget_hide(GTK_WIDGET(button));
-  button = gtk_builder_get_object (Label->builder, "buttonDsegPlus");
-  gtk_widget_hide(GTK_WIDGET(button));
-  button = gtk_builder_get_object (Label->builder, "buttonDsegMinus");
-  gtk_widget_hide(GTK_WIDGET(button));
-  button = gtk_builder_get_object (Label->builder, "buttonUsegPlus");
-  gtk_widget_hide(GTK_WIDGET(button));
-  button = gtk_builder_get_object (Label->builder, "buttonUsegMinus");
+  button = gtk_builder_get_object (builder, "buttonRondasMinus");
   gtk_widget_hide(GTK_WIDGET(button));
 
-  button = gtk_builder_get_object (Label->builder, "Inicio");
+  button = gtk_builder_get_object (builder, "InicioRondas");
   gtk_widget_hide(GTK_WIDGET(button));
-  button = gtk_builder_get_object (Label->builder, "quitSetup");
+  button = gtk_builder_get_object (builder, "quitSetupRondas");
+  gtk_widget_hide(GTK_WIDGET(button));
+}
+
+static void esconderSetup(gpointer builder)
+{
+  GObject* label;
+  GObject* button;
+
+  label = gtk_builder_get_object (builder, "Tempo");
+  gtk_widget_hide(GTK_WIDGET(label));
+  button = gtk_builder_get_object (builder, "buttonDmimPlus");
+  gtk_widget_hide(GTK_WIDGET(button));
+  button = gtk_builder_get_object (builder, "buttonDmimMinus");
+  gtk_widget_hide(GTK_WIDGET(button));
+  button = gtk_builder_get_object (builder, "buttonUmimPlus");
+  gtk_widget_hide(GTK_WIDGET(button));
+  button = gtk_builder_get_object (builder, "buttonUmimMinus");
+  gtk_widget_hide(GTK_WIDGET(button));
+  button = gtk_builder_get_object (builder, "buttonDsegPlus");
+  gtk_widget_hide(GTK_WIDGET(button));
+  button = gtk_builder_get_object (builder, "buttonDsegMinus");
+  gtk_widget_hide(GTK_WIDGET(button));
+  button = gtk_builder_get_object (builder, "buttonUsegPlus");
+  gtk_widget_hide(GTK_WIDGET(button));
+  button = gtk_builder_get_object (builder, "buttonUsegMinus");
+  gtk_widget_hide(GTK_WIDGET(button));
+
+  button = gtk_builder_get_object (builder, "Inicio");
+  gtk_widget_hide(GTK_WIDGET(button));
+  button = gtk_builder_get_object (builder, "nRondas");
+  gtk_widget_hide(GTK_WIDGET(button));
+  button = gtk_builder_get_object (builder, "quitSetup");
   gtk_widget_hide(GTK_WIDGET(button));
 }
 
@@ -134,192 +185,232 @@ static void esconderMenu(gpointer builder)
   gtk_widget_hide(GTK_WIDGET(button));
 }
 
-
-static void subtrair_minD(gpointer label)
+static void update_label (structBuilder* st) 
 {
-  minD--;
+  char digito[11];
+  sprintf(digito, "%d%d%c%d%d", st->minD_rest, st->minU_rest, ':', st->segD_rest, st->segU_rest);
+  gtk_label_set_text(GTK_LABEL(st->label), digito);
+}
 
-  if(minD == -1){
-    minD = 0;
+static void update_label_rondas (structBuilder* st) 
+{
+  char digito[11];
+  sprintf(digito, "%d", st->nRondas);
+  gtk_label_set_text(GTK_LABEL(st->label), digito);
+}
+
+static void subtrairRondas (structBuilder* st)
+{
+  st->nRondas--;
+
+  if(st->nRondas == -1){
+    st->nRondas = 0;
     return;
   }
 
-  char digito[11];
-  sprintf(digito, "%d%d%s%d%d", minD, minU, ":", segD, segU);
-  gtk_label_set_text(GTK_LABEL(label), digito);
+  update_label_rondas(st);
 }
 
-static void subtrair_minU(gpointer label)
+static void somarRondas(structBuilder* st)
 {
-  minU--;
+  st->nRondas++;
 
-  if(minU == -1){
-    minU = 0;
+  update_label_rondas(st);
+}
+
+static void subtrair_minD(structBuilder* st)
+{
+  st->minD_rest--;
+
+  if(st->minD_rest == -1){
+    st->minD_rest = 0;
     return;
   }
 
-  char digito[11];
-  sprintf(digito, "%d%d%s%d%d", minD, minU, ":", segD, segU);
-  gtk_label_set_text(GTK_LABEL(label), digito);
+  update_label(st);
 }
 
-static void subtrair_segD(gpointer label)
+static void subtrair_minU(structBuilder* st)
 {
-  segD--;
+  st->minU_rest--;
 
-  if(segD == -1){
-    segD = 0;
+  if(st->minU_rest == -1){
+    st->minU_rest = 0;
     return;
   }
 
-  char digito[11];
-  sprintf(digito, "%d%d%s%d%d", minD, minU, ":", segD, segU);
-  gtk_label_set_text(GTK_LABEL(label), digito);
+  update_label(st);
 }
 
-static void subtrair_segU(gpointer label)
+static void subtrair_segD(structBuilder* st)
 {
-  segU--;
+  st->segD_rest--;
 
-  if(segU == -1){
-    segU = 0;
+  if(st->segD_rest == -1){
+    st->segD_rest = 0;
     return;
   }
 
-  char digito[11];
-  sprintf(digito, "%d%d%s%d%d", minD, minU, ":", segD, segU);
-  gtk_label_set_text(GTK_LABEL(label), digito);
+  update_label(st);
 }
 
-static void somarDmin(gpointer label)
+static void subtrair_segU(structBuilder* st)
 {
-  minD++;
+  st->segU_rest--;
 
-  if(minD == 6){
-    minD = 5;
+  if(st->segU_rest == -1){
+    st->segU_rest = 0;
     return;
   }
 
-  char digito[11];
-  sprintf(digito, "%d%d%s%d%d", minD, minU, ":", segD, segU);
-  gtk_label_set_text(GTK_LABEL(label), digito);
-
+  update_label(st);
 }
 
-static void somarUmin(gpointer label)
+static void somarDmin(structBuilder* st)
 {
-  minU++;
+  st->minD_rest++;
 
-  if(minU == 10 && minD == 5){
-    minU = 9;
+  if(st->minD_rest == 6){
+    st->minD_rest = 5;
     return;
-  } else if(minU == 10){
-    somarDmin(label);
-    minU = 0;
   }
 
-  char digito[11];
-  sprintf(digito, "%d%d%s%d%d", minD, minU, ":", segD, segU);
-  gtk_label_set_text(GTK_LABEL(label), digito);
-
+  update_label(st);
 }
 
-static void somarDseg(gpointer label)
+static void somarUmin(structBuilder* st)
 {
-  segD++;
+  st->minU_rest++;
 
-  if(minU == 9 && minD == 5 && segD == 6){
-    segD = 5;
+  if(st->minU_rest == 10 && st->minD_rest == 5){
+    st->minU_rest = 9;
     return;
-  } else if(segD == 6){
-    segD = 0;
-    somarUmin(label);
+  } else if(st->minU_rest == 10){
+    somarDmin(st);
+    st->minU_rest = 0;
   }
 
-  char digito[11];
-  sprintf(digito, "%d%d%s%d%d", minD, minU, ":", segD, segU);
-  gtk_label_set_text(GTK_LABEL(label), digito);
-
+  update_label(st);
 }
 
-static void somarUseg(gpointer label)
+static void somarDseg(structBuilder* st)
 {
+  st->segD_rest++;
 
-  segU++;
+  if(st->minU_rest == 9 && st->minD_rest == 5 && st->segD_rest == 6){
+    st->segD_rest = 5;
+    return;
+  } else if(st->segD_rest == 6){
+    st->segD_rest = 0;
+    somarUmin(st);
+  }
+
+  update_label(st);
+}
+
+static void somarUseg(structBuilder* st)
+{
+  st->segU_rest++;
     
-  char digito[11];
-
-  if(minU == 9 && minD == 5 && segU == 10 && segD == 5){
-    segU = 9;
+  if(st->minU_rest == 9 && st->minD_rest == 5 && st->segU_rest == 10 && st->segD_rest == 5){
+    st->segU_rest = 9;
     return;
-  }else if(segU == 10 && segD == 5){
-    somarUmin(label);
-    segU = 0;
-    segD = 0;
-    sprintf(digito, "%d%d%s%d%d", minD, minU, ":", segD, segU);
-    gtk_label_set_text(GTK_LABEL(label), digito);
-
-  } else if(segU == 10){
-    somarDseg(label);
-    segU = 0;
+  }else if(st->segU_rest == 10 && st->segD_rest == 5){
+    somarUmin(st);
+    st->segU_rest = 0;
+    st->segD_rest = 0;
+  } else if(st->segU_rest == 10){
+    somarDseg(st);
+    st->segU_rest = 0;
   }
 
-  sprintf(digito, "%d%d%s%d%d", minD, minU, ":", segD, segU);
-  gtk_label_set_text(GTK_LABEL(label), digito);
-
+  update_label(st);
 }
 
-void static final_timer(gpointer data)
+void static final_timer(structBuilder* st)
 {
-  labelSetup* Label = data;
   GtkStyleContext *context;
   GObject *label;
   GObject *button;
-  GError *error = NULL;
 
   GtkCssProvider *provider = gtk_css_provider_new ();
   gtk_css_provider_load_from_path (provider, "mystyle.css", NULL);  
 
-  label= gtk_builder_get_object (Label->builder, "Acabou");
+  label= gtk_builder_get_object (st->builder, "Acabou");
   context = gtk_widget_get_style_context (GTK_WIDGET(label));
   gtk_style_context_add_provider (context, GTK_STYLE_PROVIDER(provider), GTK_STYLE_PROVIDER_PRIORITY_USER);
   gtk_widget_show (GTK_WIDGET(label));
 
-  Label->label = gtk_builder_get_object (Label->builder, "Tempo_final");
-  gtk_label_set_text(GTK_LABEL(Label->label), "00:00");
-  context = gtk_widget_get_style_context (GTK_WIDGET(Label->label));
+  label = gtk_builder_get_object (st->builder, "Tempo_final");
+  context = gtk_widget_get_style_context (GTK_WIDGET(label));
   gtk_style_context_add_provider (context, GTK_STYLE_PROVIDER(provider), GTK_STYLE_PROVIDER_PRIORITY_USER);
-  gtk_widget_show (GTK_WIDGET(Label->label));
+  gtk_widget_show (GTK_WIDGET(label));
 
-  button = gtk_builder_get_object (Label->builder, "quit_final");
+  button = gtk_builder_get_object (st->builder, "quit_final");
   context = gtk_widget_get_style_context (GTK_WIDGET(button));
   gtk_style_context_add_provider (context, GTK_STYLE_PROVIDER(provider), GTK_STYLE_PROVIDER_PRIORITY_USER);
-  g_signal_connect_swapped (button, "clicked", G_CALLBACK (menu), Label);
+  g_signal_connect_swapped (button, "clicked", G_CALLBACK (menu), st);
   gtk_widget_show (GTK_WIDGET(button));
 
-  esconderTimer(Label->builder);
+  st->id = -1;
+  st->button = NULL;
+
+  esconderTimer(st->builder);
 }
 
-gboolean contador()
+gboolean contador(structBuilder* st)
 {
-  if(segU == 0){
-    if(segD > 0){
-      segD--;
-      segU = 9;
-    } else if(minU > 0){
-      minU--;
-      segU = 9;
-      segD = 5;
-    } else if(minD > 0){
-      minD--;
-      segU = 9;
-      segD = 5;
-      minU = 9;
+  if(st->minD == 0 && st->minU == 0 && st->segD == 0 && st->segU == 1 && modo == TRUE){
+    return G_SOURCE_REMOVE;
+  }
+
+  if(st->segU == 0){
+    if(st->segD > 0){
+      st->segD--;
+      st->segU = 9;
+    } else if(st->minU > 0){
+      st->minU--;
+      st->segU = 9;
+      st->segD = 5;
+    } else if(st->minD > 0){
+      st->minD--;
+      st->segU = 9;
+      st->segD = 5;
+      st->minU = 9;
     } else {
       return G_SOURCE_REMOVE;
     }
   } else{
-    segU--;
+    st->segU--;
+  }
+
+  return G_SOURCE_CONTINUE;
+}
+
+gboolean contador_rest(structBuilder* st)
+{
+  if(st->minD_rest == 0 && st->minU_rest == 0 && st->segD_rest == 0 && st->segU_rest == 1){
+    return G_SOURCE_REMOVE;
+  }
+
+  if(st->segU_rest == 0){
+    if(st->segD_rest > 0){
+      st->segD_rest--;
+      st->segU_rest = 9;
+    } else if(st->minU_rest > 0){
+      st->minU_rest--;
+      st->segU_rest = 9;
+      st->segD_rest = 5;
+    } else if(st->minD_rest > 0){
+      st->minD_rest--;
+      st->segU_rest = 9;
+      st->segD_rest = 5;
+      st->minU_rest = 9;
+    } else {
+      return G_SOURCE_REMOVE;
+    }
+  } else{
+    st->segU_rest--;
   }
 
   return G_SOURCE_CONTINUE;
@@ -327,285 +418,468 @@ gboolean contador()
 
 gboolean update_label_time (gpointer data)
 {
-  labelSetup* Label = data;
-  GObject* label;
-  GtkStyleContext *context;
+  structBuilder* st = data;
+  static gboolean show = TRUE;
+  char digito[11];
+
+  if(modo == TRUE){
+    sprintf(digito, "%d%d%c%d%d", st->minD, st->minU, ':', st->segD, st->segU);
+    gtk_label_set_text(GTK_LABEL(st->label), digito);
+    
+    if(show == FALSE){
+      gtk_widget_hide(GTK_WIDGET(st->label_rest));
+      gtk_widget_show(GTK_WIDGET(st->label));
+      show = TRUE;
+    }
+  }
+
+  if(contador(st) == G_SOURCE_REMOVE){
+    if(modo == TRUE){
+      show = FALSE;
+      st->segU = st->aux_segU;
+      st->segD = st->aux_segD;
+      st->minU = st->aux_minU;
+      st->minD = st->aux_minD;
+      return G_SOURCE_REMOVE;
+    }
+    g_source_remove(st->id);
+    final_timer(st);
+  }
+
+  if(modo == FALSE){
+    sprintf(digito, "%d%d%c%d%d", st->minD, st->minU, ':', st->segD, st->segU);
+    gtk_label_set_text(GTK_LABEL(st->label), digito);
+  }
+  
+  return G_SOURCE_CONTINUE;
+}
+
+gboolean update_label_time_rest (gpointer data)
+{
+  structBuilder* st = data;
+  static gboolean show = FALSE;
 
   char digito[11];
 
-  if(contador() == G_SOURCE_REMOVE){
-    g_source_remove(Label->id);
-    final_timer(Label);
-  }
-  
-  if(minD == -1 && minU == -1){
-    sprintf(digito, "%d%d", segD, segU);
-    gtk_label_set_text(GTK_LABEL(Label->label), digito);
-  } else {
-    sprintf(digito, "%d%d%s%d%d", minD, minU, ":", segD, segU);
-    gtk_label_set_text(GTK_LABEL(Label->label), digito);
+  sprintf(digito, "%d%d%c%d%d", st->minD_rest, st->minU_rest, ':', st->segD_rest, st->segU_rest);
+  gtk_label_set_text(GTK_LABEL(st->label_rest), digito);
+
+  if(show == FALSE){
+    gtk_widget_hide(GTK_WIDGET(st->label));
+    gtk_widget_show(GTK_WIDGET(st->label_rest));
+    show = TRUE;
   }
 
-  if(iniciacao == TRUE && segD == 0 && segU == 0){
-    g_source_remove(Label->id);
-    timer(Label);
+  g_print("\tTeste 2: %d%d:%d%d\t%d\n", st->minD_rest, st->minU_rest, st->segD_rest, st->segU_rest, st->nRondas);
+  
+  if(contador_rest(st) == G_SOURCE_REMOVE){
+    show = FALSE;
+    st->segU_rest = st->aux_segU_rest;
+    st->segD_rest = st->aux_segD_rest;
+    st->minU_rest = st->aux_minU_rest;
+    st->minD_rest = st->aux_minD_rest;
+    return G_SOURCE_REMOVE;
   }
 
   return G_SOURCE_CONTINUE;
 }
 
-static void timer(labelSetup *Label)
+gboolean controlador_tabata (gpointer data)
+{
+  structBuilder* st = data;
+
+  if(st->nRondas == 0){
+    g_source_remove(st->id);
+    final_timer(st);
+  }
+
+  if(st->work == TRUE){
+    if(update_label_time(st) == G_SOURCE_REMOVE){
+      st->work = FALSE;
+    }
+  } else {
+    if(update_label_time_rest(st) == G_SOURCE_REMOVE){
+      st->work = TRUE;
+      st->nRondas--;
+    }
+  }
+  
+  return G_SOURCE_CONTINUE;
+}
+
+gboolean Countdown(gpointer data)
+{
+  structBuilder* st = data;
+  char digito[3];
+
+  sprintf(digito, "%c%d", '0', st->countdown);
+  gtk_label_set_text(GTK_LABEL(st->label), digito);
+  
+  if(st->countdown == 0){
+    g_source_remove(st->id);
+    if(modo == TRUE){
+      timer_tabata(st);
+    } else{
+      timer(st);
+    }
+  } else{
+    st->countdown--;
+  }
+
+  return G_SOURCE_CONTINUE;
+}
+
+static void timer_tabata(structBuilder* st)
 {
   GtkStyleContext *context;
-  GObject *label;
-  GError *error = NULL;
+  GtkCssProvider *provider = gtk_css_provider_new ();
+  gtk_css_provider_load_from_path (provider, "timer.css", NULL);
+  GtkCssProvider *provider2 = gtk_css_provider_new ();
+  gtk_css_provider_load_from_path (provider2, "timer-blue.css", NULL);    
 
-  iniciacao = FALSE;
-  segU = aux_segU;
-  segD = aux_segD;
-  minU = aux_minU;
-  minD = aux_minD;
+  char digito[11];
+
+  st->label = gtk_builder_get_object (st->builder, "Tempo_timer");
+  sprintf(digito, "%d%d%c%d%d", st->minD, st->minU, ':', st->segD, st->segU);
+  gtk_label_set_text(GTK_LABEL(st->label), digito);
+  context = gtk_widget_get_style_context (GTK_WIDGET(st->label));
+  gtk_style_context_add_provider (context, GTK_STYLE_PROVIDER(provider), GTK_STYLE_PROVIDER_PRIORITY_USER);
+
+  st->label_rest = gtk_builder_get_object (st->builder, "Tempo_timer_rest");
+  context = gtk_widget_get_style_context (GTK_WIDGET(st->label_rest));
+  gtk_style_context_add_provider (context, GTK_STYLE_PROVIDER(provider2), GTK_STYLE_PROVIDER_PRIORITY_USER);
+
+  esconderCountdown(st->builder);
+
+  gtk_widget_show (GTK_WIDGET(st->label));
+
+  st->aux_segU = st->segU;
+  st->aux_segD = st->segD;
+  st->aux_minU = st->minU;
+  st->aux_minD = st->minD;
+
+  st->aux_segU_rest = st->segU_rest;
+  st->aux_segD_rest = st->segD_rest;
+  st->aux_minU_rest = st->minU_rest;
+  st->aux_minD_rest = st->minD_rest;
   
+  st->id = g_timeout_add_seconds(1, controlador_tabata, st);
+}
 
+static void timer(structBuilder* st)
+{
+  GtkStyleContext *context;
   GtkCssProvider *provider = gtk_css_provider_new ();
   gtk_css_provider_load_from_path (provider, "timer.css", NULL);  
 
   char digito[11];
   
-  Label->label = gtk_builder_get_object (Label->builder, "Tempo_timer");
-  sprintf(digito, "%d%d%s%d%d", minD, minU, ":", segD, segU);
-  gtk_label_set_text(GTK_LABEL(Label->label), digito);
-  context = gtk_widget_get_style_context (GTK_WIDGET(Label->label));
+  st->minD = st->minD_rest;
+  st->minU = st->minU_rest;
+  st->segD = st->segD_rest;
+  st->segU = st->segU_rest;
+
+  st->label = gtk_builder_get_object (st->builder, "Tempo_timer");
+  sprintf(digito, "%d%d%c%d%d", st->minD, st->minU, ':', st->segD, st->segU);
+  gtk_label_set_text(GTK_LABEL(st->label), digito);
+  context = gtk_widget_get_style_context (GTK_WIDGET(st->label));
   gtk_style_context_add_provider (context, GTK_STYLE_PROVIDER(provider), GTK_STYLE_PROVIDER_PRIORITY_USER);
-  gtk_widget_show (GTK_WIDGET(Label->label));
 
-  esconderCountdown(Label->builder);
+  esconderCountdown(st->builder);
 
-  Label->id = g_timeout_add_seconds(1, update_label_time, Label);
+  gtk_widget_show (GTK_WIDGET(st->label));
+
+  st->id = g_timeout_add_seconds(1, update_label_time, st);
 }
 
-
-static void iniciacao_timer(labelSetup* Label)
+static void iniciacao_timer(structBuilder* st)
 {
   GtkStyleContext *context;
   GObject *label;
   GObject *button;
-  GError *error = NULL;
-
-  aux_segU = segU;
-  aux_segD = segD;
-  aux_minU = minU;
-  aux_minD = minD;
-
-  segU = 0;
-  segD = 1; //countdown de 10s
-  minU = -1;
-  minD = -1;
 
   GtkCssProvider *provider = gtk_css_provider_new ();
   gtk_css_provider_load_from_path (provider, "timer.css", NULL);  
 
   char digito[3];
+
+  st->countdown = 9;
   
-  Label->label = gtk_builder_get_object (Label->builder, "countdown");
-  sprintf(digito, "%d%d", segD, segU);
-  gtk_label_set_text(GTK_LABEL(Label->label), digito);
-  context = gtk_widget_get_style_context (GTK_WIDGET(Label->label));
+  st->label = gtk_builder_get_object (st->builder, "countdown");
+  gtk_label_set_text(GTK_LABEL(st->label), "10");
+  context = gtk_widget_get_style_context (GTK_WIDGET(st->label));
   gtk_style_context_add_provider (context, GTK_STYLE_PROVIDER(provider), GTK_STYLE_PROVIDER_PRIORITY_USER);
+  gtk_widget_show (GTK_WIDGET(st->label));
 
-  esconderSetup(Label);
+  esconderSetup(st->builder);
+ 
+  if(modo == TRUE){
+    esconderRondas(st->builder);
+    st->work = TRUE;
+  }
 
-  iniciacao = TRUE;
-  Label->id = g_timeout_add_seconds(1, update_label_time, Label);
+  st->id = g_timeout_add_seconds(1, Countdown, st);
 }
 
-static void setup_descanso(labelSetup *Label)
+static void nRondas(structBuilder* st)
 {
   GtkStyleContext *context;
-  labelSetup* descanso = (labelSetup*) calloc(1, sizeof(labelSetup));
   GObject* label;
   GObject *button;
-  GError *error = NULL;
-
-  descanso->builder = Label->builder;
-
-  GtkCssProvider *provider = gtk_css_provider_new ();
-  gtk_css_provider_load_from_path (provider, "mystyle.css", NULL);
-
-  descanso->label = gtk_builder_get_object (descanso->builder, "Tempo");
-  context = gtk_widget_get_style_context (GTK_WIDGET(descanso->label));
-  gtk_style_context_add_provider (context, GTK_STYLE_PROVIDER(provider), GTK_STYLE_PROVIDER_PRIORITY_USER);
-  gtk_widget_show (GTK_WIDGET(descanso->label));
-
-  button = gtk_builder_get_object (descanso->builder, "buttonDmimPlus");
-  context = gtk_widget_get_style_context (GTK_WIDGET(button));
-  gtk_style_context_add_provider (context, GTK_STYLE_PROVIDER(provider), GTK_STYLE_PROVIDER_PRIORITY_USER);
-  g_signal_connect_swapped (button, "clicked", G_CALLBACK (somarDmin), descanso);
-  gtk_widget_show (GTK_WIDGET(button));
-
-  button = gtk_builder_get_object (descanso->builder, "buttonDmimMinus");
-  context = gtk_widget_get_style_context (GTK_WIDGET(button));
-  gtk_style_context_add_provider (context, GTK_STYLE_PROVIDER(provider), GTK_STYLE_PROVIDER_PRIORITY_USER);
-  g_signal_connect_swapped (button, "clicked", G_CALLBACK (subtrair_minD), descanso->label);
-  gtk_widget_show (GTK_WIDGET(button));
-
-  button = gtk_builder_get_object (descanso->builder, "buttonUmimPlus");
-  context = gtk_widget_get_style_context (GTK_WIDGET(button));
-  gtk_style_context_add_provider (context, GTK_STYLE_PROVIDER(provider), GTK_STYLE_PROVIDER_PRIORITY_USER);
-  g_signal_connect_swapped (button, "clicked", G_CALLBACK (somarUmin), descanso);
-  gtk_widget_show (GTK_WIDGET(button));
-
-  button = gtk_builder_get_object (descanso->builder, "buttonUmimMinus");
-  context = gtk_widget_get_style_context (GTK_WIDGET(button));
-  gtk_style_context_add_provider (context, GTK_STYLE_PROVIDER(provider), GTK_STYLE_PROVIDER_PRIORITY_USER);
-  g_signal_connect_swapped (button, "clicked", G_CALLBACK (subtrair_minU),descanso->label);
-  gtk_widget_show (GTK_WIDGET(button));
-
-  descanso->label = gtk_builder_get_object (descanso->builder, "dezenas_seg");
-  context = gtk_widget_get_style_context (GTK_WIDGET(descanso->label));
-  gtk_style_context_add_provider (context, GTK_STYLE_PROVIDER(provider), GTK_STYLE_PROVIDER_PRIORITY_USER);
-  gtk_widget_show (GTK_WIDGET(descanso->label));
-  
-  button = gtk_builder_get_object (descanso->builder, "buttonDsegPlus");
-  context = gtk_widget_get_style_context (GTK_WIDGET(button));
-  gtk_style_context_add_provider (context, GTK_STYLE_PROVIDER(provider), GTK_STYLE_PROVIDER_PRIORITY_USER);
-  g_signal_connect_swapped (button, "clicked", G_CALLBACK (somarDseg), descanso);
-  gtk_widget_show (GTK_WIDGET(button));
-
-  button = gtk_builder_get_object (descanso->builder, "buttonDsegMinus");
-  context = gtk_widget_get_style_context (GTK_WIDGET(button));
-  gtk_style_context_add_provider (context, GTK_STYLE_PROVIDER(provider), GTK_STYLE_PROVIDER_PRIORITY_USER);
-  g_signal_connect_swapped (button, "clicked", G_CALLBACK (subtrair_segD), descanso->label);
-  gtk_widget_show (GTK_WIDGET(button));
-
-  button = gtk_builder_get_object (descanso->builder, "buttonUsegPlus");
-  context = gtk_widget_get_style_context (GTK_WIDGET(button));
-  gtk_style_context_add_provider (context, GTK_STYLE_PROVIDER(provider), GTK_STYLE_PROVIDER_PRIORITY_USER);
-  g_signal_connect_swapped (button, "clicked", G_CALLBACK (somarUseg), descanso);
-  gtk_widget_show (GTK_WIDGET(button));
-
-  button = gtk_builder_get_object (descanso->builder, "buttonUsegMinus");
-  context = gtk_widget_get_style_context (GTK_WIDGET(button));
-  gtk_style_context_add_provider (context, GTK_STYLE_PROVIDER(provider), GTK_STYLE_PROVIDER_PRIORITY_USER);
-  g_signal_connect_swapped (button, "clicked", G_CALLBACK (subtrair_segU), descanso->label);
-  gtk_widget_show (GTK_WIDGET(button));
-
-  button = gtk_builder_get_object (descanso->builder, "Inicio");
-  context = gtk_widget_get_style_context (GTK_WIDGET(button));
-  gtk_style_context_add_provider (context, GTK_STYLE_PROVIDER(provider), GTK_STYLE_PROVIDER_PRIORITY_USER);
-  g_signal_connect_swapped (button, "clicked", G_CALLBACK (menu), descanso->builder);
-  gtk_widget_show (GTK_WIDGET(button));
-
-  button = gtk_builder_get_object (descanso->builder, "quitSetup");
-  context = gtk_widget_get_style_context (GTK_WIDGET(button));
-  gtk_style_context_add_provider (context, GTK_STYLE_PROVIDER(provider), GTK_STYLE_PROVIDER_PRIORITY_USER);
-  g_signal_connect_swapped (button, "clicked", G_CALLBACK (menu), descanso->builder);
-  gtk_widget_show (GTK_WIDGET(button));
-}
-
-static void setup(labelSetup* Label)
-{
-  GtkStyleContext *context;
-  GObject *button;
-  GError *error = NULL;
 
   static gboolean conections = FALSE;
-
-  segU = 0;
-  segD = 0;
-  minU = 0;
-  minD = 0;
+  st->nRondas = 0;
 
   GtkCssProvider *provider = gtk_css_provider_new ();
   gtk_css_provider_load_from_path (provider, "mystyle.css", NULL);
 
-  Label->label = gtk_builder_get_object (Label->builder, "Tempo");
-  gtk_label_set_text(GTK_LABEL(Label->label),"00:00");
-  context = gtk_widget_get_style_context (GTK_WIDGET(Label->label));
-  if(conections == FALSE){ 
-    gtk_style_context_add_provider (context, GTK_STYLE_PROVIDER(provider), GTK_STYLE_PROVIDER_PRIORITY_USER);
-  }
-  gtk_widget_show (GTK_WIDGET(Label->label));
+  label = gtk_builder_get_object (st->builder, "LabelRondas");
+  context = gtk_widget_get_style_context (GTK_WIDGET(label));
+  gtk_style_context_add_provider (context, GTK_STYLE_PROVIDER(provider), GTK_STYLE_PROVIDER_PRIORITY_USER);
+  gtk_widget_show (GTK_WIDGET(label));
+
+  st->label = gtk_builder_get_object (st->builder, "Rondas");
+  gtk_label_set_text(GTK_LABEL(st->label),"0");
+  context = gtk_widget_get_style_context (GTK_WIDGET(st->label));
+  gtk_style_context_add_provider (context, GTK_STYLE_PROVIDER(provider), GTK_STYLE_PROVIDER_PRIORITY_USER);
+  gtk_widget_show (GTK_WIDGET(st->label));
   
-  button = gtk_builder_get_object (Label->builder, "buttonDmimPlus");
+  button = gtk_builder_get_object (st->builder, "buttonRondasPlus");
   context = gtk_widget_get_style_context (GTK_WIDGET(button));
   gtk_style_context_add_provider (context, GTK_STYLE_PROVIDER(provider), GTK_STYLE_PROVIDER_PRIORITY_USER);
   if(conections == FALSE){ 
-    g_signal_connect_swapped(button, "clicked", G_CALLBACK (somarDmin), Label->label);
+    g_signal_connect_swapped(button, "clicked", G_CALLBACK (somarRondas), st);
   }
   gtk_widget_show (GTK_WIDGET(button));
 
-  button = gtk_builder_get_object (Label->builder, "buttonDmimMinus");
+  button = gtk_builder_get_object (st->builder, "buttonRondasMinus");
   context = gtk_widget_get_style_context (GTK_WIDGET(button));
   gtk_style_context_add_provider (context, GTK_STYLE_PROVIDER(provider), GTK_STYLE_PROVIDER_PRIORITY_USER);
   if(conections == FALSE){ 
-    g_signal_connect_swapped(button, "clicked", G_CALLBACK (subtrair_minD), Label->label);
+    g_signal_connect_swapped(button, "clicked", G_CALLBACK (subtrairRondas), st);
   }
   gtk_widget_show (GTK_WIDGET(button));
 
-  button = gtk_builder_get_object (Label->builder, "buttonUmimPlus");
+  button = gtk_builder_get_object (st->builder, "InicioRondas");
   context = gtk_widget_get_style_context (GTK_WIDGET(button));
   gtk_style_context_add_provider (context, GTK_STYLE_PROVIDER(provider), GTK_STYLE_PROVIDER_PRIORITY_USER);
-  if(conections == FALSE){ 
-    g_signal_connect_swapped(button, "clicked", G_CALLBACK (somarUmin), Label->label);
+  if(conections == FALSE){
+    g_signal_connect_swapped(button, "clicked", G_CALLBACK (iniciacao_timer), st);
   }
   gtk_widget_show (GTK_WIDGET(button));
 
-  button = gtk_builder_get_object (Label->builder, "buttonUmimMinus");
-  context = gtk_widget_get_style_context (GTK_WIDGET(button));
-  gtk_style_context_add_provider (context, GTK_STYLE_PROVIDER(provider), GTK_STYLE_PROVIDER_PRIORITY_USER);
-  if(conections == FALSE){ 
-    g_signal_connect_swapped(button, "clicked", G_CALLBACK (subtrair_minU), Label->label);
-  }
-  gtk_widget_show (GTK_WIDGET(button));
-
-  button = gtk_builder_get_object (Label->builder, "buttonDsegPlus");
-  context = gtk_widget_get_style_context (GTK_WIDGET(button));
-  gtk_style_context_add_provider (context, GTK_STYLE_PROVIDER(provider), GTK_STYLE_PROVIDER_PRIORITY_USER);
-  if(conections == FALSE){ 
-    g_signal_connect_swapped(button, "clicked", G_CALLBACK (somarDseg), Label->label);
-  }
-  gtk_widget_show (GTK_WIDGET(button));
-
-  button = gtk_builder_get_object (Label->builder, "buttonDsegMinus");
-  context = gtk_widget_get_style_context (GTK_WIDGET(button));
-  gtk_style_context_add_provider (context, GTK_STYLE_PROVIDER(provider), GTK_STYLE_PROVIDER_PRIORITY_USER);
-  if(conections == FALSE){ 
-    g_signal_connect_swapped(button, "clicked", G_CALLBACK (subtrair_segD), Label->label);
-  }
-  gtk_widget_show (GTK_WIDGET(button));
-
-  button = gtk_builder_get_object (Label->builder, "buttonUsegPlus");
-  context = gtk_widget_get_style_context (GTK_WIDGET(button));
-  gtk_style_context_add_provider (context, GTK_STYLE_PROVIDER(provider), GTK_STYLE_PROVIDER_PRIORITY_USER);
-  if(conections == FALSE){ 
-    g_signal_connect_swapped(button, "clicked", G_CALLBACK (somarUseg), Label->label);
-  }
-  gtk_widget_show (GTK_WIDGET(button));
-
-  button = gtk_builder_get_object (Label->builder, "buttonUsegMinus");
-  context = gtk_widget_get_style_context (GTK_WIDGET(button));
-  gtk_style_context_add_provider (context, GTK_STYLE_PROVIDER(provider), GTK_STYLE_PROVIDER_PRIORITY_USER);
-  if(conections == FALSE){ 
-    g_signal_connect_swapped(button, "clicked", G_CALLBACK (subtrair_segU), Label->label);
-  }
-  gtk_widget_show (GTK_WIDGET(button));
-
-  button = gtk_builder_get_object (Label->builder, "Inicio");
-  context = gtk_widget_get_style_context (GTK_WIDGET(button));
-  gtk_style_context_add_provider (context, GTK_STYLE_PROVIDER(provider), GTK_STYLE_PROVIDER_PRIORITY_USER);
-  if(modo == 1 && conections == FALSE){
-    g_signal_connect_swapped(button, "clicked", G_CALLBACK (setup_descanso), Label);
-  } else if(conections == FALSE){
-    g_signal_connect_swapped(button, "clicked", G_CALLBACK (iniciacao_timer), Label);
-  }
-  gtk_widget_show (GTK_WIDGET(button));
-
-  button = gtk_builder_get_object (Label->builder, "quitSetup");
+  button = gtk_builder_get_object (st->builder, "quitSetupRondas");
   context = gtk_widget_get_style_context (GTK_WIDGET(button));
   gtk_style_context_add_provider (context, GTK_STYLE_PROVIDER(provider), GTK_STYLE_PROVIDER_PRIORITY_USER);
   if(conections == FALSE){   
-    g_signal_connect_swapped(button, "clicked", G_CALLBACK (menu), Label);
+    g_signal_connect_swapped(button, "clicked", G_CALLBACK (menu), st);
+  }
+  gtk_widget_show (GTK_WIDGET(button));
+
+  if(conections == FALSE){
+    conections = TRUE;
+  }
+
+  esconderSetup(st->builder);
+}
+
+static void setup_descanso(structBuilder* st)
+{
+  GtkStyleContext *context;
+  GObject* label;
+  GObject *button;
+
+  static gboolean conections = FALSE;
+
+  st->minD = st->minD_rest;
+  st->minU = st->minU_rest;
+  st->segD = st->segD_rest;
+  st->segU = st->segU_rest;
+
+  st->minD_rest = 0;
+  st->minU_rest = 0;
+  st->segD_rest = 0;
+  st->segU_rest = 0;
+  
+  if(st->id >= 0 && st->button != NULL){
+    g_signal_handler_block (st->button, st->id);
+    block = TRUE;
+  }
+
+  GtkCssProvider *provider = gtk_css_provider_new ();
+  gtk_css_provider_load_from_path (provider, "mystyle.css", NULL);
+  GtkCssProvider *provider2 = gtk_css_provider_new ();
+  gtk_css_provider_load_from_path (provider2, "mystyle3.css", NULL);
+
+  st->label = gtk_builder_get_object (st->builder, "Tempo");
+  gtk_label_set_text(GTK_LABEL(st->label),"00:00");
+  context = gtk_widget_get_style_context (GTK_WIDGET(st->label));
+  gtk_style_context_add_provider (context, GTK_STYLE_PROVIDER(provider2), GTK_STYLE_PROVIDER_PRIORITY_USER);
+  gtk_widget_show (GTK_WIDGET(st->label));
+  
+  button = gtk_builder_get_object (st->builder, "buttonDmimPlus");
+  context = gtk_widget_get_style_context (GTK_WIDGET(button));
+  gtk_style_context_add_provider (context, GTK_STYLE_PROVIDER(provider), GTK_STYLE_PROVIDER_PRIORITY_USER);
+  gtk_widget_show (GTK_WIDGET(button));
+
+  button = gtk_builder_get_object (st->builder, "buttonDmimMinus");
+  context = gtk_widget_get_style_context (GTK_WIDGET(button));
+  gtk_style_context_add_provider (context, GTK_STYLE_PROVIDER(provider), GTK_STYLE_PROVIDER_PRIORITY_USER);
+  gtk_widget_show (GTK_WIDGET(button));
+
+  button = gtk_builder_get_object (st->builder, "buttonUmimPlus");
+  context = gtk_widget_get_style_context (GTK_WIDGET(button));
+  gtk_style_context_add_provider (context, GTK_STYLE_PROVIDER(provider), GTK_STYLE_PROVIDER_PRIORITY_USER);
+  gtk_widget_show (GTK_WIDGET(button));
+
+  button = gtk_builder_get_object (st->builder, "buttonUmimMinus");
+  context = gtk_widget_get_style_context (GTK_WIDGET(button));
+  gtk_style_context_add_provider (context, GTK_STYLE_PROVIDER(provider), GTK_STYLE_PROVIDER_PRIORITY_USER);
+  gtk_widget_show (GTK_WIDGET(button));
+
+  button = gtk_builder_get_object (st->builder, "buttonDsegPlus");
+  context = gtk_widget_get_style_context (GTK_WIDGET(button));
+  gtk_style_context_add_provider (context, GTK_STYLE_PROVIDER(provider), GTK_STYLE_PROVIDER_PRIORITY_USER);
+  gtk_widget_show (GTK_WIDGET(button));
+
+  button = gtk_builder_get_object (st->builder, "buttonDsegMinus");
+  context = gtk_widget_get_style_context (GTK_WIDGET(button));
+  gtk_style_context_add_provider (context, GTK_STYLE_PROVIDER(provider), GTK_STYLE_PROVIDER_PRIORITY_USER);
+  gtk_widget_show (GTK_WIDGET(button));
+
+  button = gtk_builder_get_object (st->builder, "buttonUsegPlus");
+  context = gtk_widget_get_style_context (GTK_WIDGET(button));
+  gtk_style_context_add_provider (context, GTK_STYLE_PROVIDER(provider), GTK_STYLE_PROVIDER_PRIORITY_USER);
+  gtk_widget_show (GTK_WIDGET(button));
+
+  button = gtk_builder_get_object (st->builder, "buttonUsegMinus");
+  context = gtk_widget_get_style_context (GTK_WIDGET(button));
+  gtk_style_context_add_provider (context, GTK_STYLE_PROVIDER(provider), GTK_STYLE_PROVIDER_PRIORITY_USER);
+  gtk_widget_show (GTK_WIDGET(button));
+
+  button = gtk_builder_get_object (st->builder, "nRondas");
+  context = gtk_widget_get_style_context (GTK_WIDGET(button));
+  gtk_style_context_add_provider (context, GTK_STYLE_PROVIDER(provider), GTK_STYLE_PROVIDER_PRIORITY_USER);
+  g_signal_connect_swapped(button, "clicked", G_CALLBACK (nRondas), st);
+  gtk_widget_show (GTK_WIDGET(button));
+
+  button = gtk_builder_get_object (st->builder, "quitSetup");
+  context = gtk_widget_get_style_context (GTK_WIDGET(button));
+  gtk_style_context_add_provider (context, GTK_STYLE_PROVIDER(provider), GTK_STYLE_PROVIDER_PRIORITY_USER);
+  gtk_widget_show (GTK_WIDGET(button));
+  
+  if(conections == FALSE){
+    conections = TRUE;
+  }
+
+}
+
+static void setup(structBuilder* st)
+{
+  GtkStyleContext *context;
+  GObject *button;
+
+  static gboolean conections = FALSE;
+
+  st->segU_rest= 0;
+  st->segD_rest = 0;
+  st->minU_rest = 0;
+  st->minD_rest = 0;
+
+  // if(st->id >= 0 && st->button != NULL){
+  //   g_signal_handler_block (st->button, st->id);
+  //   block2 = TRUE;
+  // }
+
+  GtkCssProvider *provider = gtk_css_provider_new ();
+  gtk_css_provider_load_from_path (provider, "mystyle.css", NULL);
+
+  st->label = gtk_builder_get_object (st->builder, "Tempo");
+  gtk_label_set_text(GTK_LABEL(st->label),"00:00");
+  context = gtk_widget_get_style_context (GTK_WIDGET(st->label));
+  gtk_style_context_add_provider (context, GTK_STYLE_PROVIDER(provider), GTK_STYLE_PROVIDER_PRIORITY_USER);
+  gtk_widget_show (GTK_WIDGET(st->label));
+  
+  button = gtk_builder_get_object (st->builder, "buttonDmimPlus");
+  context = gtk_widget_get_style_context (GTK_WIDGET(button));
+  gtk_style_context_add_provider (context, GTK_STYLE_PROVIDER(provider), GTK_STYLE_PROVIDER_PRIORITY_USER);
+  if(conections == FALSE){ 
+    g_signal_connect_swapped(button, "clicked", G_CALLBACK (somarDmin), st);
+  }
+  gtk_widget_show (GTK_WIDGET(button));
+
+  button = gtk_builder_get_object (st->builder, "buttonDmimMinus");
+  context = gtk_widget_get_style_context (GTK_WIDGET(button));
+  gtk_style_context_add_provider (context, GTK_STYLE_PROVIDER(provider), GTK_STYLE_PROVIDER_PRIORITY_USER);
+  if(conections == FALSE){ 
+    g_signal_connect_swapped(button, "clicked", G_CALLBACK (subtrair_minD), st);
+  }
+  gtk_widget_show (GTK_WIDGET(button));
+
+  button = gtk_builder_get_object (st->builder, "buttonUmimPlus");
+  context = gtk_widget_get_style_context (GTK_WIDGET(button));
+  gtk_style_context_add_provider (context, GTK_STYLE_PROVIDER(provider), GTK_STYLE_PROVIDER_PRIORITY_USER);
+  if(conections == FALSE){ 
+    g_signal_connect_swapped(button, "clicked", G_CALLBACK (somarUmin), st);
+  }
+  gtk_widget_show (GTK_WIDGET(button));
+
+  button = gtk_builder_get_object (st->builder, "buttonUmimMinus");
+  context = gtk_widget_get_style_context (GTK_WIDGET(button));
+  gtk_style_context_add_provider (context, GTK_STYLE_PROVIDER(provider), GTK_STYLE_PROVIDER_PRIORITY_USER);
+  if(conections == FALSE){ 
+    g_signal_connect_swapped(button, "clicked", G_CALLBACK (subtrair_minU), st);
+  }
+  gtk_widget_show (GTK_WIDGET(button));
+
+  button = gtk_builder_get_object (st->builder, "buttonDsegPlus");
+  context = gtk_widget_get_style_context (GTK_WIDGET(button));
+  gtk_style_context_add_provider (context, GTK_STYLE_PROVIDER(provider), GTK_STYLE_PROVIDER_PRIORITY_USER);
+  if(conections == FALSE){ 
+    g_signal_connect_swapped(button, "clicked", G_CALLBACK (somarDseg), st);
+  }
+  gtk_widget_show (GTK_WIDGET(button));
+
+  button = gtk_builder_get_object (st->builder, "buttonDsegMinus");
+  context = gtk_widget_get_style_context (GTK_WIDGET(button));
+  gtk_style_context_add_provider (context, GTK_STYLE_PROVIDER(provider), GTK_STYLE_PROVIDER_PRIORITY_USER);
+  if(conections == FALSE){ 
+    g_signal_connect_swapped(button, "clicked", G_CALLBACK (subtrair_segD), st);
+  }
+  gtk_widget_show (GTK_WIDGET(button));
+
+  button = gtk_builder_get_object (st->builder, "buttonUsegPlus");
+  context = gtk_widget_get_style_context (GTK_WIDGET(button));
+  gtk_style_context_add_provider (context, GTK_STYLE_PROVIDER(provider), GTK_STYLE_PROVIDER_PRIORITY_USER);
+  if(conections == FALSE){ 
+    g_signal_connect_swapped(button, "clicked", G_CALLBACK (somarUseg), st);
+  }
+  gtk_widget_show (GTK_WIDGET(button));
+
+  button = gtk_builder_get_object (st->builder, "buttonUsegMinus");
+  context = gtk_widget_get_style_context (GTK_WIDGET(button));
+  gtk_style_context_add_provider (context, GTK_STYLE_PROVIDER(provider), GTK_STYLE_PROVIDER_PRIORITY_USER);
+  if(conections == FALSE){ 
+    g_signal_connect_swapped(button, "clicked", G_CALLBACK (subtrair_segU), st);
+  }
+  gtk_widget_show (GTK_WIDGET(button));
+
+  button = gtk_builder_get_object (st->builder, "Inicio");
+  context = gtk_widget_get_style_context (GTK_WIDGET(button));
+  gtk_style_context_add_provider (context, GTK_STYLE_PROVIDER(provider), GTK_STYLE_PROVIDER_PRIORITY_USER);
+  if(modo == TRUE){
+    st->id = g_signal_connect_swapped(button, "clicked", G_CALLBACK (setup_descanso), st);
+    st->button = button;
+  } else {
+    g_signal_connect_swapped(button, "clicked", G_CALLBACK (iniciacao_timer), st);
+  }
+  gtk_widget_show (GTK_WIDGET(button));
+
+  button = gtk_builder_get_object (st->builder, "quitSetup");
+  context = gtk_widget_get_style_context (GTK_WIDGET(button));
+  gtk_style_context_add_provider (context, GTK_STYLE_PROVIDER(provider), GTK_STYLE_PROVIDER_PRIORITY_USER);
+  if(conections == FALSE){   
+    g_signal_connect_swapped(button, "clicked", G_CALLBACK (menu), st);
   }
   gtk_widget_show (GTK_WIDGET(button));
   
@@ -613,59 +887,67 @@ static void setup(labelSetup* Label)
     conections = TRUE;
   }
 
-  esconderMenu(Label->builder);
+  esconderMenu(st->builder);
 }
 
 
-static void modo_normal(gpointer builder)
+static void modo_normal(structBuilder* st)
 {
-  modo = 0;
-  menu(builder);
+  modo = FALSE;
+  menu(st);
 }
 
-static void modo_tabata(gpointer builder)
+static void modo_tabata(structBuilder* st)
 {
-  modo = 1;
-  menu(builder);
+  modo = TRUE;
+  menu(st);
 }
 
-static void modos (labelSetup* Label)
+static void modos (structBuilder* st)
 {
   GtkStyleContext *context; 
   GObject *label;
   GObject *button;
 
+  static gboolean conections = FALSE;
+
   GtkCssProvider *provider = gtk_css_provider_new ();
   gtk_css_provider_load_from_path (provider, "mystyle.css", NULL);
 
-  label = gtk_builder_get_object (Label->builder, "Modos");
+  label = gtk_builder_get_object (st->builder, "Modos");
   context = gtk_widget_get_style_context (GTK_WIDGET(label));
   gtk_style_context_add_provider (context, GTK_STYLE_PROVIDER(provider), GTK_STYLE_PROVIDER_PRIORITY_USER);
   gtk_widget_show (GTK_WIDGET(label));
 
-  button = gtk_builder_get_object (Label->builder, "Normal");
+  button = gtk_builder_get_object (st->builder, "Normal");
   context = gtk_widget_get_style_context (GTK_WIDGET(button));
   gtk_style_context_add_provider (context, GTK_STYLE_PROVIDER(provider), GTK_STYLE_PROVIDER_PRIORITY_USER);
-  g_signal_connect_swapped (button, "clicked", G_CALLBACK (modo_normal), Label);
+  if(conections == FALSE){
+    g_signal_connect_swapped (button, "clicked", G_CALLBACK (modo_normal), st);
+  }
   gtk_widget_show (GTK_WIDGET(button));
 
-  button = gtk_builder_get_object (Label->builder, "Tabata");
+  button = gtk_builder_get_object (st->builder, "Tabata");
   context = gtk_widget_get_style_context (GTK_WIDGET(button));
   gtk_style_context_add_provider (context, GTK_STYLE_PROVIDER(provider), GTK_STYLE_PROVIDER_PRIORITY_USER);
-  g_signal_connect_swapped (button, "clicked", G_CALLBACK (modo_tabata), Label);
+  if(conections == FALSE){
+    g_signal_connect_swapped (button, "clicked", G_CALLBACK (modo_tabata), st);
+  }
   gtk_widget_show (GTK_WIDGET(button));
   
-  button = gtk_builder_get_object (Label->builder, "Sair");
+  button = gtk_builder_get_object (st->builder, "Sair");
   context = gtk_widget_get_style_context (GTK_WIDGET(button));
   gtk_style_context_add_provider (context, GTK_STYLE_PROVIDER(provider), GTK_STYLE_PROVIDER_PRIORITY_USER);
-  g_signal_connect_swapped (button, "clicked", G_CALLBACK (menu), Label);
+  if(conections == FALSE){
+    g_signal_connect_swapped (button, "clicked", G_CALLBACK (menu), st);
+  }
   gtk_widget_show (GTK_WIDGET(button));
   
-  esconderMenu(Label->builder);
+  esconderMenu(st->builder);
 
 }
 
-static void menu(labelSetup* Label)
+static void menu(structBuilder* st)
 {
   GtkStyleContext *context;
   GObject *button;
@@ -676,77 +958,84 @@ static void menu(labelSetup* Label)
   GtkCssProvider *provider2 = gtk_css_provider_new ();
   gtk_css_provider_load_from_path (provider2, "mystyle2.css", NULL);
 
-  label = gtk_builder_get_object (Label->builder, "Label");
+  label = gtk_builder_get_object (st->builder, "Label");
   context = gtk_widget_get_style_context (GTK_WIDGET(label));
   gtk_style_context_add_provider (context, GTK_STYLE_PROVIDER(provider), GTK_STYLE_PROVIDER_PRIORITY_USER);
   gtk_widget_show (GTK_WIDGET(label));
 
-  label = gtk_builder_get_object (Label->builder, "LabelModo");
-  if(modo == 0){
+  label = gtk_builder_get_object (st->builder, "LabelModo");
+  if(modo == FALSE){
     gtk_label_set_text (GTK_LABEL(label), "Modo: Normal");
-  } else if (modo == 1){
+  } else if (modo == TRUE){
     gtk_label_set_text (GTK_LABEL(label), "Modo: Tabata");
   }
   context = gtk_widget_get_style_context (GTK_WIDGET(label));
   gtk_style_context_add_provider (context, GTK_STYLE_PROVIDER(provider2), GTK_STYLE_PROVIDER_PRIORITY_USER);
   gtk_widget_show (GTK_WIDGET(label));
   
-  button = gtk_builder_get_object (Label->builder, "button1");
+  button = gtk_builder_get_object (st->builder, "button1");
   context = gtk_widget_get_style_context (GTK_WIDGET(button));
   gtk_style_context_add_provider (context, GTK_STYLE_PROVIDER(provider), GTK_STYLE_PROVIDER_PRIORITY_USER);
-  g_signal_connect_swapped (button, "clicked", G_CALLBACK (setup), Label);
+  g_signal_connect_swapped (button, "clicked", G_CALLBACK (setup), st);
   gtk_widget_show (GTK_WIDGET(button));
 
-  button = gtk_builder_get_object (Label->builder, "button2");
+  button = gtk_builder_get_object (st->builder, "button2");
   context = gtk_widget_get_style_context (GTK_WIDGET(button));
   gtk_style_context_add_provider (context, GTK_STYLE_PROVIDER(provider), GTK_STYLE_PROVIDER_PRIORITY_USER);
-  g_signal_connect_swapped (button, "clicked", G_CALLBACK (modos), Label);
+  g_signal_connect_swapped (button, "clicked", G_CALLBACK (modos), st);
   gtk_widget_show (GTK_WIDGET(button));
 
-  button = gtk_builder_get_object (Label->builder, "quit");
+  button = gtk_builder_get_object (st->builder, "quit");
   context = gtk_widget_get_style_context (GTK_WIDGET(button));
   gtk_style_context_add_provider (context, GTK_STYLE_PROVIDER(provider), GTK_STYLE_PROVIDER_PRIORITY_USER);
   g_signal_connect_swapped (button, "clicked", G_CALLBACK (gtk_main_quit), NULL);
   gtk_widget_show (GTK_WIDGET(button));
 
-  esconderModos(Label->builder);
+  esconderModos(st->builder);
   
-  esconderSetup(Label);
+  esconderSetup(st->builder);
 
-  esconderTimer(Label->builder);
+  esconderRondas(st->builder);
 
-  esconderFinal(Label->builder);
+  esconderCountdown(st->builder);
+
+  esconderTimer(st->builder);
+
+  esconderFinal(st->builder);
 }
 
 int main (int argc, char *argv[])
 {
   gtk_init (&argc, &argv);
 
-  labelSetup* Label = (labelSetup*) malloc(sizeof(labelSetup));
+  structBuilder* st = (structBuilder*) malloc(sizeof(structBuilder));
   GError *error = NULL;
 
-  Label->builder = gtk_builder_new ();
-  if (gtk_builder_add_from_file (Label->builder, "builder.ui", &error) == 0)
+  st->builder = gtk_builder_new ();
+  if (gtk_builder_add_from_file (st->builder, "builder.ui", &error) == 0)
   {
     g_printerr ("Error loading file: %s\n", error->message);
     g_clear_error (&error);
     return -1;
   }
-  
+
+  st->button = NULL;
+  st->id = -1;
+
   GtkStyleContext *context;
 
   GtkCssProvider *provider = gtk_css_provider_new ();
   gtk_css_provider_load_from_path (provider, "mystyle.css", NULL);
   
-  Label->window = gtk_builder_get_object (Label->builder, "window");
-  gtk_window_fullscreen (GTK_WINDOW(Label->window));
-  context = gtk_widget_get_style_context (GTK_WIDGET(Label->window));
+  st->window = gtk_builder_get_object (st->builder, "window");
+  gtk_window_fullscreen (GTK_WINDOW(st->window));
+  context = gtk_widget_get_style_context (GTK_WIDGET(st->window));
   gtk_style_context_add_provider (context, GTK_STYLE_PROVIDER(provider), GTK_STYLE_PROVIDER_PRIORITY_USER);
-  g_signal_connect_swapped (Label->window, "destroy", G_CALLBACK (apagar_janela), Label->window);
+  g_signal_connect_swapped (st->window, "destroy", G_CALLBACK (apagar_janela), st->window);
 
-  menu(Label);
+  menu(st);
   gtk_main ();
 
-  free(Label);
+  free(st);
   return 0;
 }
