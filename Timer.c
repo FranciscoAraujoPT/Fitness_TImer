@@ -75,6 +75,17 @@ static void esconderFinal(gpointer builder)
   gtk_widget_hide(GTK_WIDGET(button));
 }
 
+static void esconderRelogio(gpointer builder)
+{
+  GObject* label;
+  GObject* button;
+
+  label = gtk_builder_get_object (builder, "Tempo_relogio");
+  gtk_widget_hide(GTK_WIDGET(label));
+  button = gtk_builder_get_object (builder, "quitRelogio");
+  gtk_widget_hide(GTK_WIDGET(button));
+}
+
 static void esconderTimer(gpointer builder)
 {
   GObject* label;
@@ -171,9 +182,11 @@ static void esconderMenu(gpointer builder)
   gtk_widget_hide(GTK_WIDGET(label));
   label = gtk_builder_get_object (builder, "LabelModo");
   gtk_widget_hide(GTK_WIDGET(label));
-  button = gtk_builder_get_object (builder, "button1");
+  button = gtk_builder_get_object (builder, "inicio_setup");
   gtk_widget_hide(GTK_WIDGET(button));
-  button = gtk_builder_get_object (builder, "button2");
+  button = gtk_builder_get_object (builder, "modos_setup");
+  gtk_widget_hide(GTK_WIDGET(button));
+  button = gtk_builder_get_object (builder, "Relogio");
   gtk_widget_hide(GTK_WIDGET(button));
   button = gtk_builder_get_object (builder, "quit");
   gtk_widget_hide(GTK_WIDGET(button));
@@ -523,6 +536,67 @@ gboolean Countdown(gpointer data)
   }
 
   return G_SOURCE_CONTINUE;
+}
+
+char* get_relogio_string(){
+  time_t time_var = time(NULL);
+  struct tm *info;
+  char *time_string = calloc(100, sizeof(char));
+  info = localtime( &time_var );
+  strftime(time_string, 100, "%I:%M:%S %p", info);
+  return time_string;
+}
+
+gboolean update_label_relogio (gpointer data) {
+  structBuilder* st = data;
+  gchar *t = get_relogio_string();
+  gtk_label_set_text(GTK_LABEL(st->label), t);
+  g_free (t);
+  return G_SOURCE_CONTINUE;
+}
+
+static void relogio(structBuilder* st)
+{
+  GObject *button;
+  GtkStyleContext *context;
+  GtkCssProvider *provider = gtk_css_provider_new ();
+  gtk_css_provider_load_from_path (provider, "mystyle.css", NULL);  
+
+  static gboolean conections = FALSE;
+  time_t time_var = time(NULL);
+  struct tm *info;
+  char *time_string = (char*) calloc(100, sizeof(char));
+  
+  st->minD = st->minD_rest;
+  st->minU = st->minU_rest;
+  st->segD = st->segD_rest;
+  st->segU = st->segU_rest;
+
+  st->label = gtk_builder_get_object (st->builder, "Tempo_relogio");
+  info = localtime( &time_var );
+  strftime(time_string, 100, "%I:%M:%S %p", info);
+  gtk_label_set_label(GTK_LABEL(st->label), time_string);
+  context = gtk_widget_get_style_context (GTK_WIDGET(st->label));
+  gtk_style_context_add_provider (context, GTK_STYLE_PROVIDER(provider), GTK_STYLE_PROVIDER_PRIORITY_USER);
+  gtk_widget_show (GTK_WIDGET(st->label));
+
+  button = gtk_builder_get_object (st->builder, "quitRelogio");
+  context = gtk_widget_get_style_context (GTK_WIDGET(button));
+  gtk_style_context_add_provider (context, GTK_STYLE_PROVIDER(provider), GTK_STYLE_PROVIDER_PRIORITY_USER);
+  if(conections == FALSE){   
+    g_signal_connect_swapped(button, "clicked", G_CALLBACK (menu), st);
+  }
+  gtk_widget_show (GTK_WIDGET(button));
+  
+  g_free (time_string);
+
+  esconderMenu(st->builder);
+
+  if(conections == FALSE){
+    conections = TRUE;
+  }
+
+  st->id = g_timeout_add_seconds(0.5, update_label_relogio, st);
 }
 
 static void timer_tabata(structBuilder* st)
@@ -963,6 +1037,7 @@ static void menu(structBuilder* st)
   GtkStyleContext *context;
   GObject *button;
   GObject* label;
+  static gboolean conections = FALSE;
   
   GtkCssProvider *provider = gtk_css_provider_new ();
   gtk_css_provider_load_from_path (provider, "mystyle.css", NULL);
@@ -984,22 +1059,36 @@ static void menu(structBuilder* st)
   gtk_style_context_add_provider (context, GTK_STYLE_PROVIDER(provider2), GTK_STYLE_PROVIDER_PRIORITY_USER);
   gtk_widget_show (GTK_WIDGET(label));
   
-  button = gtk_builder_get_object (st->builder, "button1");
+  button = gtk_builder_get_object (st->builder, "inicio_setup");
   context = gtk_widget_get_style_context (GTK_WIDGET(button));
   gtk_style_context_add_provider (context, GTK_STYLE_PROVIDER(provider), GTK_STYLE_PROVIDER_PRIORITY_USER);
-  g_signal_connect_swapped (button, "clicked", G_CALLBACK (setup), st);
+  if(conections == FALSE){
+    g_signal_connect_swapped (button, "clicked", G_CALLBACK (setup), st);
+  }
   gtk_widget_show (GTK_WIDGET(button));
 
-  button = gtk_builder_get_object (st->builder, "button2");
+  button = gtk_builder_get_object (st->builder, "modos_setup");
   context = gtk_widget_get_style_context (GTK_WIDGET(button));
   gtk_style_context_add_provider (context, GTK_STYLE_PROVIDER(provider), GTK_STYLE_PROVIDER_PRIORITY_USER);
-  g_signal_connect_swapped (button, "clicked", G_CALLBACK (modos), st);
+  if(conections == FALSE){
+    g_signal_connect_swapped (button, "clicked", G_CALLBACK (modos), st);
+  }
+  gtk_widget_show (GTK_WIDGET(button));
+
+  button = gtk_builder_get_object (st->builder, "Relogio");
+  context = gtk_widget_get_style_context (GTK_WIDGET(button));
+  gtk_style_context_add_provider (context, GTK_STYLE_PROVIDER(provider), GTK_STYLE_PROVIDER_PRIORITY_USER);
+  if(conections == FALSE){
+    g_signal_connect_swapped (button, "clicked", G_CALLBACK (relogio), st);
+  }
   gtk_widget_show (GTK_WIDGET(button));
 
   button = gtk_builder_get_object (st->builder, "quit");
   context = gtk_widget_get_style_context (GTK_WIDGET(button));
   gtk_style_context_add_provider (context, GTK_STYLE_PROVIDER(provider), GTK_STYLE_PROVIDER_PRIORITY_USER);
-  g_signal_connect_swapped (button, "clicked", G_CALLBACK (gtk_main_quit), NULL);
+  if(conections == FALSE){
+    g_signal_connect_swapped (button, "clicked", G_CALLBACK (gtk_main_quit), NULL);
+  }
   gtk_widget_show (GTK_WIDGET(button));
 
   esconderModos(st->builder);
@@ -1007,6 +1096,8 @@ static void menu(structBuilder* st)
   esconderSetup(st->builder);
 
   esconderRondas(st->builder);
+
+  esconderRelogio(st->builder);
 
   esconderCountdown(st->builder);
 
