@@ -451,7 +451,7 @@
             <property name="width-request">200</property>
             <property name="height-request">100</property>
             <property name="margin-top">75</property>
-            <property name="margin-left">110</property>
+            <property name="margin-left">200</property>
             <property name="border-width">10</property>
           </object>
           <packing>

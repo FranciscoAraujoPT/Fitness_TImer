@@ -48,11 +48,6 @@ gboolean update_label_time_rest (gpointer data);
 int main (int argc, char *argv[]);
 void static menu(structBuilder* st);
 
-static void test(gpointer   data)
-{
-  g_print("hello\n");
-}
-
 static void apagar_janela(gpointer window){
 
   if(window == NULL){
@@ -439,8 +434,6 @@ gboolean update_label_time (gpointer data)
     }
   }
 
-  g_print("Teste 1: %d%d:%d%d\t%d\n", st->minD, st->minU, st->segD, st->segU, st->nRondas);
-
   if(contador(st) == G_SOURCE_REMOVE){
     if(modo == TRUE){
       show = FALSE;
@@ -478,8 +471,6 @@ gboolean update_label_time_rest (gpointer data)
     show = TRUE;
   }
 
-  g_print("\tTeste 2: %d%d:%d%d\t%d\n", st->minD_rest, st->minU_rest, st->segD_rest, st->segU_rest, st->nRondas);
-  
   if(contador_rest(st) == G_SOURCE_REMOVE){
     
     show = FALSE;
@@ -538,12 +529,18 @@ gboolean Countdown(gpointer data)
   return G_SOURCE_CONTINUE;
 }
 
+static void apagar_relogio(structBuilder* st)
+{
+  g_source_remove(st->id);
+  menu(st);
+}
+
 char* get_relogio_string(){
   time_t time_var = time(NULL);
   struct tm *info;
   char *time_string = calloc(100, sizeof(char));
   info = localtime( &time_var );
-  strftime(time_string, 100, "%I:%M:%S %p", info);
+  strftime(time_string, 100, "%H:%M:%S", info);
   return time_string;
 }
 
@@ -574,7 +571,7 @@ static void relogio(structBuilder* st)
 
   st->label = gtk_builder_get_object (st->builder, "Tempo_relogio");
   info = localtime( &time_var );
-  strftime(time_string, 100, "%I:%M:%S %p", info);
+  strftime(time_string, 100, "%H:%M:%S", info);
   gtk_label_set_label(GTK_LABEL(st->label), time_string);
   context = gtk_widget_get_style_context (GTK_WIDGET(st->label));
   gtk_style_context_add_provider (context, GTK_STYLE_PROVIDER(provider), GTK_STYLE_PROVIDER_PRIORITY_USER);
@@ -584,7 +581,7 @@ static void relogio(structBuilder* st)
   context = gtk_widget_get_style_context (GTK_WIDGET(button));
   gtk_style_context_add_provider (context, GTK_STYLE_PROVIDER(provider), GTK_STYLE_PROVIDER_PRIORITY_USER);
   if(conections == FALSE){   
-    g_signal_connect_swapped(button, "clicked", G_CALLBACK (menu), st);
+    g_signal_connect_swapped(button, "clicked", G_CALLBACK(apagar_relogio), st);
   }
   gtk_widget_show (GTK_WIDGET(button));
   
@@ -627,7 +624,6 @@ static void timer_tabata(structBuilder* st)
   st->aux_minU = st->minU;
   st->aux_minD = st->minD;
 
-  g_print("Teste 0: %d%d:%d%d\t%d\n", st->minD, st->minU, st->segD, st->segU, st->nRondas);
 
   st->aux_segU_rest = st->segU_rest;
   st->aux_segD_rest = st->segD_rest;
@@ -767,7 +763,6 @@ static void setup_descanso(structBuilder* st)
   st->segD = st->segD_rest;
   st->segU = st->segU_rest;
 
-  g_print("Teste 0: %d%d:%d%d\n", st->minD, st->minU, st->segD, st->segU);
   st->minD_rest = 0;
   st->minU_rest = 0;
   st->segD_rest = 0;
