@@ -48,14 +48,149 @@ gboolean update_label_time_rest (gpointer data);
 int main (int argc, char *argv[]);
 void static menu(structBuilder* st);
 
-static void apagar_janela(gpointer window){
+// static void apagarFinal(gpointer builder)
+// {
+//   GObject* label;
+//   GObject* button;
 
-  if(window == NULL){
-    return;
-  }
-  
-  gtk_window_close(GTK_WINDOW(window));
-}
+//   label = gtk_builder_get_object (builder, "Acabou");
+//   g_object_unref (G_OBJECT(label));
+//   label = gtk_builder_get_object (builder, "Tempo_final");
+//   g_object_unref (G_OBJECT(label));
+//   button = gtk_builder_get_object (builder, "quit_final");
+//   g_object_unref (G_OBJECT(button));
+// }
+
+// static void apagarRelogio(gpointer builder)
+// {
+//   GObject* label;
+//   GObject* button;
+
+//   label = gtk_builder_get_object (builder, "Tempo_relogio");
+//   g_object_unref (G_OBJECT(label));
+//   button = gtk_builder_get_object (builder, "quitRelogio");
+//   g_object_unref (G_OBJECT(button));
+// }
+
+// static void apagarTimer(gpointer builder)
+// {
+//   GObject* label;
+
+//   label = gtk_builder_get_object (builder, "Tempo_timer");
+//   g_object_unref (G_OBJECT(label));
+//   label = gtk_builder_get_object (builder, "Tempo_timer_rest");
+//   g_object_unref (G_OBJECT(label));
+// }
+
+// static void apagarCountdown(gpointer builder)
+// {
+//   GObject* label;
+
+//   label = gtk_builder_get_object (builder, "countdown");
+//   g_object_unref (G_OBJECT(label));
+// }
+
+// static void apagarRondas(gpointer builder)
+// {
+//   GObject* label;
+//   GObject* button;
+
+//   label = gtk_builder_get_object (builder, "LabelRondas");
+//   g_object_unref (G_OBJECT(label));
+//   label = gtk_builder_get_object (builder, "Rondas");
+//   g_object_unref (G_OBJECT(label));
+//   button = gtk_builder_get_object (builder, "buttonRondasPlus");
+//   g_object_unref (G_OBJECT(button));
+//   button = gtk_builder_get_object (builder, "buttonRondasMinus");
+//   g_object_unref (G_OBJECT(button));
+
+//   button = gtk_builder_get_object (builder, "InicioRondas");
+//   g_object_unref (G_OBJECT(button));
+//   button = gtk_builder_get_object (builder, "quitSetupRondas");
+//   g_object_unref (G_OBJECT(button));
+// }
+
+// static void apagarSetup(gpointer builder)
+// {
+//   GObject* label;
+//   GObject* button;
+
+//   label = gtk_builder_get_object (builder, "Tempo");
+//   g_object_unref (G_OBJECT(label));
+//   button = gtk_builder_get_object (builder, "buttonDmimPlus");
+//   g_object_unref (G_OBJECT(button));
+//   button = gtk_builder_get_object (builder, "buttonDmimMinus");
+//   g_object_unref (G_OBJECT(button));
+//   button = gtk_builder_get_object (builder, "buttonUmimPlus");
+//   g_object_unref (G_OBJECT(button));
+//   button = gtk_builder_get_object (builder, "buttonUmimMinus");
+//   g_object_unref (G_OBJECT(button));
+//   button = gtk_builder_get_object (builder, "buttonDsegPlus");
+//   g_object_unref (G_OBJECT(button));
+//   button = gtk_builder_get_object (builder, "buttonDsegMinus");
+//   g_object_unref (G_OBJECT(button));
+//   button = gtk_builder_get_object (builder, "buttonUsegPlus");
+//   g_object_unref (G_OBJECT(button));
+//   button = gtk_builder_get_object (builder, "buttonUsegMinus");
+//   g_object_unref (G_OBJECT(button));
+
+//   button = gtk_builder_get_object (builder, "Inicio");
+//   g_object_unref (G_OBJECT(button));
+//   button = gtk_builder_get_object (builder, "setup_descanso");
+//   g_object_unref (G_OBJECT(button));
+//   button = gtk_builder_get_object (builder, "nRondas");
+//   g_object_unref (G_OBJECT(button));
+//   button = gtk_builder_get_object (builder, "quitSetup");
+//   g_object_unref (G_OBJECT(button));
+// }
+
+// static void apagarModos(gpointer builder)
+// {
+//   GObject* label;
+//   GObject* button;
+
+//   label = gtk_builder_get_object (builder, "Modos");
+//   g_object_unref (G_OBJECT(label));
+//   button = gtk_builder_get_object (builder, "Normal");
+//   g_object_unref (G_OBJECT(button));
+//   button = gtk_builder_get_object (builder, "Tabata");
+//   g_object_unref (G_OBJECT(button));
+//   button = gtk_builder_get_object (builder, "Sair");
+//   g_object_unref (G_OBJECT(button));
+// }
+
+// static void apagarMenu(gpointer builder)
+// {
+//   GObject* label;
+//   GObject* button;
+
+//   label = gtk_builder_get_object (builder, "Label");
+//   g_object_unref (G_OBJECT(label));
+//   label = gtk_builder_get_object (builder, "LabelModo");
+//   g_object_unref (G_OBJECT(label));
+//   button = gtk_builder_get_object (builder, "inicio_setup");
+//   g_object_unref (G_OBJECT(button));
+//   button = gtk_builder_get_object (builder, "modos_setup");
+//   g_object_unref (G_OBJECT(button));
+//   button = gtk_builder_get_object (builder, "Relogio");
+//   g_object_unref (G_OBJECT(button));
+//   button = gtk_builder_get_object (builder, "quit");
+//   g_object_unref (G_OBJECT(button));
+// }
+
+// static void apagar_programa(structBuilder* st){
+//   apagarMenu(st->builder);
+//   apagarModos(st->builder);
+//   apagarRelogio(st->builder);
+//   apagarSetup(st->builder);
+//   apagarTimer(st->builder);
+//   apagarRondas(st->builder);
+//   apagarCountdown(st->builder);
+//   apagarFinal(st->builder);
+//   g_object_unref(st->window);
+//   free(st);
+//   gtk_main_quit();
+// }
 
 static void esconderFinal(gpointer builder)
 {
@@ -564,11 +699,6 @@ static void relogio(structBuilder* st)
   struct tm *info;
   char *time_string = (char*) calloc(100, sizeof(char));
   
-  st->minD = st->minD_rest;
-  st->minU = st->minU_rest;
-  st->segD = st->segD_rest;
-  st->segU = st->segU_rest;
-
   st->label = gtk_builder_get_object (st->builder, "Tempo_relogio");
   info = localtime( &time_var );
   strftime(time_string, 100, "%H:%M:%S", info);
@@ -593,6 +723,7 @@ static void relogio(structBuilder* st)
     conections = TRUE;
   }
 
+  g_print("Relogio\n");
   st->id = g_timeout_add_seconds(0.5, update_label_relogio, st);
 }
 
@@ -603,8 +734,6 @@ static void timer_tabata(structBuilder* st)
   gtk_css_provider_load_from_path (provider, "timer.css", NULL);
   GtkCssProvider *provider2 = gtk_css_provider_new ();
   gtk_css_provider_load_from_path (provider2, "timer-blue.css", NULL);    
-
-  char digito[11];
 
   st->label = gtk_builder_get_object (st->builder, "Tempo_timer");
   context = gtk_widget_get_style_context (GTK_WIDGET(st->label));
@@ -662,13 +791,9 @@ static void timer(structBuilder* st)
 static void iniciacao_timer(structBuilder* st)
 {
   GtkStyleContext *context;
-  GObject *label;
-  GObject *button;
 
   GtkCssProvider *provider = gtk_css_provider_new ();
   gtk_css_provider_load_from_path (provider, "timer.css", NULL);  
-
-  char digito[3];
 
   st->countdown = 9;
   
@@ -753,7 +878,6 @@ static void nRondas(structBuilder* st)
 static void setup_descanso(structBuilder* st)
 {
   GtkStyleContext *context;
-  GObject* label;
   GObject *button;
 
   static gboolean conections = FALSE;
@@ -1082,9 +1206,13 @@ static void menu(structBuilder* st)
   context = gtk_widget_get_style_context (GTK_WIDGET(button));
   gtk_style_context_add_provider (context, GTK_STYLE_PROVIDER(provider), GTK_STYLE_PROVIDER_PRIORITY_USER);
   if(conections == FALSE){
-    g_signal_connect_swapped (button, "clicked", G_CALLBACK (gtk_main_quit), NULL);
+    g_signal_connect_swapped (button, "clicked", G_CALLBACK (gtk_main_quit), st);
   }
   gtk_widget_show (GTK_WIDGET(button));
+
+  if(conections == FALSE){
+    conections = TRUE;
+  }
 
   esconderModos(st->builder);
   
@@ -1127,11 +1255,10 @@ int main (int argc, char *argv[])
   gtk_window_fullscreen (GTK_WINDOW(st->window));
   context = gtk_widget_get_style_context (GTK_WIDGET(st->window));
   gtk_style_context_add_provider (context, GTK_STYLE_PROVIDER(provider), GTK_STYLE_PROVIDER_PRIORITY_USER);
-  g_signal_connect_swapped (st->window, "destroy", G_CALLBACK (apagar_janela), st->window);
+  g_signal_connect_swapped (st->window, "destroy", G_CALLBACK (gtk_main_quit), st);
 
   menu(st);
   gtk_main ();
 
-  free(st);
   return 0;
 }
