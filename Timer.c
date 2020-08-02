@@ -723,7 +723,6 @@ static void relogio(structBuilder* st)
     conections = TRUE;
   }
 
-  g_print("Relogio\n");
   st->id = g_timeout_add_seconds(0.5, update_label_relogio, st);
 }
 
