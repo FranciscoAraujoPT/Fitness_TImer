@@ -2,3 +2,11 @@ label {
     color: #ff0000;
     font-size: 25em;
 }
+
+button{
+    font-size: 2em;
+}
+
+button:hover {
+    color: #ff0000;
+}
