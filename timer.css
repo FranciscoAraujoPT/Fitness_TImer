@@ -1,12 +1,39 @@
-label {
+window {
+    background-color: #000000;
+}
+  
+button:hover {
     color: #ff0000;
-    font-size: 25em;
 }
 
 button{
     font-size: 2em;
 }
 
-button:hover {
-    color: #ff0000;
+label#LabelRondas{
+    font-size: 10em;
 }
+
+label#TempoBlue {
+    color: #0000ff;
+}
+
+label#countdown {
+    font-size: 25em;
+}
+
+label#Tempo_timer{
+    font-size: 25em;
+}
+
+label#Tempo_timer_rest {
+    color: #0000ff;
+    font-size: 25em;
+}
+
+label {
+    color: #ff0000;
+    font-size: 15em;
+}
+
+
