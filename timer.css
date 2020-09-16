@@ -10,7 +10,7 @@ button{
     font-size: 2em;
 }
 
-label#LabelRondas{
+label#LabelRondas, label#Modo_StopWatch{
     font-size: 10em;
 }
 
