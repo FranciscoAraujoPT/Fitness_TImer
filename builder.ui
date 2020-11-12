@@ -2,7 +2,6 @@
 <interface>
   <object id="window" class="GtkWindow">
     <property name="visible">True</property>
-    <property name="title">Grid</property>
     <child>
       <object id="grid" class="GtkGrid">
         <property name="visible">True</property>
@@ -577,6 +576,11 @@
           </packing>
         </child>
       </object>
+    </child>
+  </object>
+  <object id="window_treinos" class="GtkWindow">
+    <property name="visible">True</property>
+    <child>
     </child>
   </object>
 </interface>

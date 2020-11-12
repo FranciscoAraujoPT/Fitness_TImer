@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <gtk/gtk.h>
+#include <gdk/gdk.h>
 #include <stdlib.h>
 #include <unistd.h>
 
@@ -367,8 +368,6 @@ static void stop (structBuilder* st)
 
 static void reset(structBuilder* st)
 {
-  g_source_remove(st->id);
-
   st->segU = st->aux_segU;
   st->segD = st->aux_segD;
   st->minU = st->aux_minU;
@@ -551,7 +550,6 @@ gboolean final_buzz(gpointer data)
   structBuilder *st = data;
 
   system("cvlc -q --play-and-exit countdownFinal.mp3 2> /dev/null");
-  sleep(1);
   preQuit(st);
 }
 
@@ -581,7 +579,7 @@ void static final_timer(structBuilder* st)
 
   esconderTimer(st->builder);
 
-  st->id = g_timeout_add_seconds(1, final_buzz, st);
+  st->id = g_timeout_add(1, final_buzz, st);
 }
 
 gboolean contador_stopwatch(structBuilder* st)
@@ -702,9 +700,7 @@ gboolean update_label_time (gpointer data)
       st->segD = st->aux_segD;
       st->minU = st->aux_minU;
       st->minD = st->aux_minD;
-
-      system("cvlc -q --play-and-exit countdown321.mp3 2> /dev/null");
-
+  
       return G_SOURCE_REMOVE;
     }
     g_source_remove(st->id);
@@ -714,9 +710,7 @@ gboolean update_label_time (gpointer data)
   if(modo == 0){
     sprintf(digito, "%d%d%c%d%d", st->minD, st->minU, ':', st->segD, st->segU);
     gtk_label_set_text(GTK_LABEL(st->label), digito);
-  } else {
-    system("cvlc -q --play-and-exit countdown10.mp3 2> /dev/null");
-  }
+  } 
 
   return G_SOURCE_CONTINUE;
 }
@@ -737,15 +731,22 @@ gboolean update_label_time_rest (gpointer data)
     st->segD_rest = st->aux_segD_rest;
     st->minU_rest = st->aux_minU_rest;
     st->minD_rest = st->aux_minD_rest;
-
-    system("cvlc -q --play-and-exit countdown321.mp3 2> /dev/null");
-
     return G_SOURCE_REMOVE;
   }
 
-  system("cvlc -q --play-and-exit countdown10.mp3 2> /dev/null");
-
   return G_SOURCE_CONTINUE;
+}
+
+gboolean step_buzz()
+{
+  system("cvlc -q --play-and-exit countdown321.mp3 2> /dev/null");
+  return G_SOURCE_REMOVE;
+}
+
+gboolean stepFinal_buzz()
+{
+  system("cvlc -q --play-and-exit countdown.mp3 2> /dev/null");
+  return G_SOURCE_REMOVE;
 }
 
 gboolean controlador_tabata (gpointer data)
@@ -756,10 +757,12 @@ gboolean controlador_tabata (gpointer data)
     if(update_label_time(st) == G_SOURCE_REMOVE){
       st->work = FALSE;
       st->nRondas--;
+      g_timeout_add(1, step_buzz, NULL);
     }
   } else {
     if(update_label_time_rest(st) == G_SOURCE_REMOVE){
       st->work = TRUE;
+      g_timeout_add(1, step_buzz, NULL);
     }
   }
 
@@ -781,11 +784,9 @@ gboolean Countdown(gpointer data)
   
 
   if(st->countdown == 0){
-    system("cvlc -q --play-and-exit countdown.mp3 2> /dev/null");
+    g_timeout_add(1, stepFinal_buzz, NULL);
   } else if(st->countdown <= 3){
-    system("cvlc -q --play-and-exit countdown321.mp3 2> /dev/null");
-  } else {
-    system("cvlc -q --play-and-exit countdown10.mp3 2> /dev/null");
+    g_timeout_add(1, step_buzz, NULL);
   }
 
   if(st->countdown == 0){
@@ -1009,6 +1010,9 @@ static void iniciacao_timer(structBuilder* st)
 
 static void stopwatch(structBuilder* st)
 {
+  st->counter = 0;
+  g_source_remove(st->id);
+
   GObject *button;
   GtkStyleContext *context;
   GtkCssProvider *provider = gtk_css_provider_new ();
@@ -1029,6 +1033,7 @@ static void stopwatch(structBuilder* st)
   gtk_widget_set_name (GTK_WIDGET(st->label),"Tempo_timer");
   
   button = gtk_builder_get_object (st->builder, "Stop");
+  gtk_button_set_label(GTK_BUTTON(button), "Stop");
   context = gtk_widget_get_style_context (GTK_WIDGET(button));
   gtk_style_context_add_provider (context, GTK_STYLE_PROVIDER(provider), GTK_STYLE_PROVIDER_PRIORITY_USER);
   if(conections == FALSE){   
@@ -1434,7 +1439,7 @@ gboolean counter(gpointer data)
 {
   structBuilder* st = data;
   st->counter++;
-
+  printf("%d\n", st->counter);
   if(st->counter == 30){
     st->counter = 0;
     g_source_remove(st->id);
@@ -1559,19 +1564,30 @@ int main (int argc, char *argv[])
   
   st->nRondas_reset = 1;
   st->id = -1;
+  st->counter = 0;
 
+  GdkScreen *screen = gdk_screen_get_default ();
+  GdkDisplay* monitor = gdk_display_get_default ();
+  int n_monitor = gdk_display_get_n_monitors(monitor);
   GtkStyleContext *context;
-
   GtkCssProvider *provider = gtk_css_provider_new ();
   gtk_css_provider_load_from_path (provider, "timer.css", NULL);
   
   st->window = gtk_builder_get_object (st->builder, "window");
-  gtk_window_fullscreen (GTK_WINDOW(st->window));
+  gtk_window_fullscreen_on_monitor(GTK_WINDOW(st->window), screen, 0);
   context = gtk_widget_get_style_context (GTK_WIDGET(st->window));
   gtk_style_context_add_provider (context, GTK_STYLE_PROVIDER(provider), GTK_STYLE_PROVIDER_PRIORITY_USER);
   g_signal_connect_swapped (st->window, "destroy", G_CALLBACK (gtk_main_quit), st);
 
   gtk_widget_add_events(GTK_WIDGET(st->window), GDK_POINTER_MOTION_MASK);
+
+  if(n_monitor > 1){
+    // GObject *window = gtk_builder_get_object (st->builder, "window_treinos");
+    // gtk_window_fullscreen_on_monitor(GTK_WINDOW(window), screen, 1); 
+    // context = gtk_widget_get_style_context (GTK_WIDGET(window));
+    // gtk_style_context_add_provider (context, GTK_STYLE_PROVIDER(provider), GTK_STYLE_PROVIDER_PRIORITY_USER);
+    // g_signal_connect_swapped (window, "destroy", G_CALLBACK (gtk_main_quit), st);
+  }
 
   menu(st);
   gtk_main ();
