@@ -11,7 +11,7 @@ button{
 }
 
 label#LabelRondas, label#Modo_StopWatch{
-    font-size: 10em;
+    font-size: 7.5em;
 }
 
 label#TempoBlue {
@@ -23,17 +23,17 @@ label#countdown {
 }
 
 label#Tempo_timer{
-    font-size: 25em;
+    font-size: 15em;
 }
 
 label#Tempo_timer_rest {
     color: #0000ff;
-    font-size: 25em;
+    font-size: 15em;
 }
 
 label {
     color: #ff0000;
-    font-size: 15em;
+    font-size: 10em;
 }
 
 

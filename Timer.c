@@ -3,6 +3,7 @@
 #include <gdk/gdk.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <limits.h>
 
 short int modo = 0;
 
@@ -1439,7 +1440,7 @@ gboolean counter(gpointer data)
 {
   structBuilder* st = data;
   st->counter++;
-  printf("%d\n", st->counter);
+
   if(st->counter == 30){
     st->counter = 0;
     g_source_remove(st->id);
@@ -1539,11 +1540,12 @@ static void menu(structBuilder* st)
 
 int main (int argc, char *argv[])
 {
+  chdir("/home/ubuntu/fitness_timer");
   gtk_init (&argc, &argv);
 
   structBuilder* st = (structBuilder*) malloc(sizeof(structBuilder));
   GError *error = NULL;
-
+  
   st->builder = gtk_builder_new ();
   if (gtk_builder_add_from_file (st->builder, "builder.ui", &error) == 0)
   {
