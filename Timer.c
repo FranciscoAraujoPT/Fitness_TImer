@@ -200,7 +200,6 @@ void static menu(structBuilder* st);
 static void esconderFinal(gpointer builder)
 {
   GObject* label;
-  GObject* button;
 
   label = gtk_builder_get_object (builder, "Acabou");
   gtk_widget_hide(GTK_WIDGET(label));
@@ -211,7 +210,6 @@ static void esconderFinal(gpointer builder)
 static void esconderRelogio(gpointer builder)
 {
   GObject* label;
-  GObject* button;
 
   label = gtk_builder_get_object (builder, "Tempo_relogio");
   gtk_widget_hide(GTK_WIDGET(label));
@@ -551,13 +549,14 @@ gboolean final_buzz(gpointer data)
 
   system("cvlc -q --play-and-exit countdownFinal.mp3 2> /dev/null");
   preQuit(st);
+
+  return G_SOURCE_REMOVE;
 }
 
 void static final_timer(structBuilder* st)
 {
   GtkStyleContext *context;
   GObject *label;
-  GObject *button;
 
   GtkCssProvider *provider = gtk_css_provider_new ();
   gtk_css_provider_load_from_path (provider, "timer.css", NULL);  
@@ -829,7 +828,6 @@ gboolean update_label_relogio (gpointer data) {
 
 static void relogio(structBuilder* st)
 {
-  GObject *button;
   GtkStyleContext *context;
   GtkCssProvider *provider = gtk_css_provider_new ();
   gtk_css_provider_load_from_path (provider, "timer.css", NULL);  
@@ -1439,12 +1437,14 @@ gboolean counter(gpointer data)
 {
   structBuilder* st = data;
   st->counter++;
-  printf("%d\n", st->counter);
+
   if(st->counter == 30){
     st->counter = 0;
     g_source_remove(st->id);
     relogio(st);
   }
+
+  return G_SOURCE_CONTINUE;
 }
 
 static void menu(structBuilder* st)
