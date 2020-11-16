@@ -7,6 +7,9 @@ If you have not alredy installed, please install before compiling the program us
 ```
 sudo apt-get install build-essential libgtk-3-dev
 ```
+```
+sudo apt-get install libvlc-dev
+```
 
 ## Compiling
 To compile the programe use your favourite compiler follow by:
