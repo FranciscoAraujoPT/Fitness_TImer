@@ -550,9 +550,9 @@
       </object>
     </child>
   </object>
-  <object id="window_treinos" class="GtkWindow">
+  <!-- <object id="window_treinos" class="GtkWindow">
     <property name="visible">True</property>
     <child>
     </child>
-  </object>
+  </object> -->
 </interface>

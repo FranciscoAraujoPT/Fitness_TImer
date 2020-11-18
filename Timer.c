@@ -2,6 +2,7 @@
 #include <gtk/gtk.h>
 #include <gdk/gdk.h>
 #include <stdlib.h>
+#include <vlc/vlc.h>
 #include <unistd.h>
 #include <limits.h>
 
@@ -547,8 +548,35 @@ static void somarUseg(structBuilder* st)
 gboolean final_buzz(gpointer data)
 {
   structBuilder *st = data;
+  libvlc_instance_t * inst;
+  libvlc_media_player_t *mp;
+  libvlc_media_t *m;
+  
+  /* Load the VLC engine */
+  inst = libvlc_new (0, NULL);
 
-  system("cvlc -q --play-and-exit countdownFinal.mp3 2> /dev/null");
+  /* Create a new item */
+  m = libvlc_media_new_path (inst, "countdownFinal.mp3");
+    
+  /* Create a media player playing environement */
+  mp = libvlc_media_player_new_from_media (m);
+  
+  /* No need to keep the media now */
+  libvlc_media_release (m);
+
+  /* play the media_player */
+  libvlc_media_player_play (mp);
+
+  sleep (2); /* Let it play a bit */
+
+  /* Stop playing */
+  libvlc_media_player_stop (mp);
+
+  /* Free the media_player */
+  libvlc_media_player_release (mp);
+
+  libvlc_release (inst);
+ 
   preQuit(st);
 
   return G_SOURCE_REMOVE;
@@ -739,13 +767,69 @@ gboolean update_label_time_rest (gpointer data)
 
 gboolean step_buzz()
 {
-  system("cvlc -q --play-and-exit countdown321.mp3 2> /dev/null");
+  libvlc_instance_t * inst;
+  libvlc_media_player_t *mp;
+  libvlc_media_t *m;
+  
+  /* Load the VLC engine */
+  inst = libvlc_new (0, NULL);
+
+  /* Create a new item */
+  m = libvlc_media_new_path (inst, "countdown321.mp3");
+  
+  /* Create a media player playing environement */
+  mp = libvlc_media_player_new_from_media (m);
+  
+  /* No need to keep the media now */
+  libvlc_media_release (m);
+
+  /* play the media_player */
+  libvlc_media_player_play (mp);
+
+  sleep (1); /* Let it play a bit */
+
+  /* Stop playing */
+  libvlc_media_player_stop (mp);
+
+  /* Free the media_player */
+  libvlc_media_player_release (mp);
+
+  libvlc_release (inst);
+
   return G_SOURCE_REMOVE;
 }
 
 gboolean stepFinal_buzz()
 {
-  system("cvlc -q --play-and-exit countdown.mp3 2> /dev/null");
+  libvlc_instance_t * inst;
+  libvlc_media_player_t *mp;
+  libvlc_media_t *m;
+  
+  /* Load the VLC engine */
+  inst = libvlc_new (0, NULL);
+
+  /* Create a new item */
+  m = libvlc_media_new_path (inst, "countdown.mp3");
+  
+  /* Create a media player playing environement */
+  mp = libvlc_media_player_new_from_media (m);
+  
+  /* No need to keep the media now */
+  libvlc_media_release (m);
+
+  /* play the media_player */
+  libvlc_media_player_play (mp);
+
+  sleep (1); /* Let it play a bit */
+
+  /* Stop playing */
+  libvlc_media_player_stop (mp);
+
+  /* Free the media_player */
+  libvlc_media_player_release (mp);
+
+  libvlc_release (inst);
+
   return G_SOURCE_REMOVE;
 }
 
@@ -785,11 +869,11 @@ gboolean Countdown(gpointer data)
 
   if(st->countdown == 0){
     g_timeout_add(1, stepFinal_buzz, NULL);
-  } else if(st->countdown <= 3){
+  } else if(st->countdown <= 3 && st->countdown > 0){
     g_timeout_add(1, step_buzz, NULL);
   }
 
-  if(st->countdown == 0){
+  if(st->countdown == -1){
     g_source_remove(st->id);
     if(modo == TRUE){
       timer_tabata(st);
