@@ -14,7 +14,7 @@ sudo apt-get install libvlc-dev
 ## Compiling
 To compile the programe use your favourite compiler follow by:
 ```
-Timer.c -o "Fitness Timer" `pkg-config --cflags gtk+-3.0` `pkg-config --libs gtk+-3.0 -lvlc`
+Timer.c -o "Fitness Timer" `pkg-config --cflags gtk+-3.0` `pkg-config --libs gtk+-3.0` -lvlc
 ```
 ## Support
 If you have any questions or you like to suggest something, don't hesitate in sending me a message or an email.
