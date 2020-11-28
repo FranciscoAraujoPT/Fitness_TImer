@@ -5,8 +5,11 @@
 #include <vlc/vlc.h>
 #include <unistd.h>
 #include <limits.h>
+#include <pthread.h>
 
 short int modo = 0;
+pthread_mutex_t mutex;
+pthread_cond_t cv_buzz, cv_final, cv_rondas, cv_final_buzz;
 
 typedef struct _structBuilder
 {
@@ -402,6 +405,17 @@ static void preQuit(structBuilder* st)
   quit(st);
 }
 
+gboolean restart(gpointer data)
+{
+  structBuilder* st = data;
+
+  sleep(2);
+  
+  preQuit(st);
+
+  return G_SOURCE_REMOVE;
+}
+
 static void update_label (structBuilder* st) 
 {
   char digito[11];
@@ -545,13 +559,16 @@ static void somarUseg(structBuilder* st)
   update_label(st);
 }
 
-gboolean final_buzz(gpointer data)
+void *final_buzz()
 {
-  structBuilder *st = data;
   libvlc_instance_t * inst;
   libvlc_media_player_t *mp;
   libvlc_media_t *m;
   
+  pthread_mutex_lock(&mutex);
+  
+  pthread_cond_wait(&cv_final_buzz, &mutex);
+
   /* Load the VLC engine */
   inst = libvlc_new (0, NULL);
 
@@ -577,9 +594,9 @@ gboolean final_buzz(gpointer data)
 
   libvlc_release (inst);
  
-  preQuit(st);
+  pthread_mutex_unlock(&mutex);
 
-  return G_SOURCE_REMOVE;
+  pthread_exit(NULL);
 }
 
 void static final_timer(structBuilder* st)
@@ -607,7 +624,9 @@ void static final_timer(structBuilder* st)
 
   esconderTimer(st->builder);
 
-  st->id = g_timeout_add(1, final_buzz, st);
+  pthread_cond_signal(&cv_final_buzz);
+
+  st->id = g_timeout_add(2, restart, st);
 }
 
 gboolean contador_stopwatch(structBuilder* st)
@@ -765,12 +784,16 @@ gboolean update_label_time_rest (gpointer data)
   return G_SOURCE_CONTINUE;
 }
 
-gboolean step_buzz()
+void *step_buzz_rondas()
 {
   libvlc_instance_t * inst;
   libvlc_media_player_t *mp;
   libvlc_media_t *m;
   
+  pthread_mutex_lock(&mutex);
+
+  pthread_cond_wait(&cv_rondas, &mutex);
+
   /* Load the VLC engine */
   inst = libvlc_new (0, NULL);
 
@@ -796,15 +819,67 @@ gboolean step_buzz()
 
   libvlc_release (inst);
 
-  return G_SOURCE_REMOVE;
+  pthread_mutex_unlock(&mutex);
+
+  pthread_exit(NULL);
 }
 
-gboolean stepFinal_buzz()
+void *step_buzz(void* data)
 {
+  structBuilder* st = data;
   libvlc_instance_t * inst;
   libvlc_media_player_t *mp;
   libvlc_media_t *m;
   
+  pthread_mutex_lock(&mutex);
+
+  if (st->countdown > 3 || st->countdown <= 0) {
+    pthread_cond_wait(&cv_buzz, &mutex);
+  }
+
+  /* Load the VLC engine */
+  inst = libvlc_new (0, NULL);
+
+  /* Create a new item */
+  m = libvlc_media_new_path (inst, "countdown321.mp3");
+  
+  /* Create a media player playing environement */
+  mp = libvlc_media_player_new_from_media (m);
+  
+  /* No need to keep the media now */
+  libvlc_media_release (m);
+
+  /* play the media_player */
+  libvlc_media_player_play (mp);
+
+  sleep (1); /* Let it play a bit */
+
+  /* Stop playing */
+  libvlc_media_player_stop (mp);
+
+  /* Free the media_player */
+  libvlc_media_player_release (mp);
+
+  libvlc_release (inst);
+
+  pthread_mutex_unlock(&mutex);
+  
+  pthread_exit(NULL);
+}
+
+void *stepFinal_buzz(void* data)
+{
+  structBuilder* st = data;
+  libvlc_instance_t * inst;
+  libvlc_media_player_t *mp;
+  libvlc_media_t *m;
+  
+  pthread_mutex_lock(&mutex);
+  
+  if (st->countdown != 0) {
+    pthread_cond_wait(&cv_final, &mutex);
+  }
+
   /* Load the VLC engine */
   inst = libvlc_new (0, NULL);
 
@@ -830,7 +905,9 @@ gboolean stepFinal_buzz()
 
   libvlc_release (inst);
 
-  return G_SOURCE_REMOVE;
+  pthread_mutex_unlock(&mutex); 
+ 
+  pthread_exit(NULL);
 }
 
 gboolean controlador_tabata (gpointer data)
@@ -841,12 +918,14 @@ gboolean controlador_tabata (gpointer data)
     if(update_label_time(st) == G_SOURCE_REMOVE){
       st->work = FALSE;
       st->nRondas--;
-      g_timeout_add(1, step_buzz, NULL);
+      if(st->nRondas != 0){
+        pthread_cond_signal(&cv_rondas);
+      }
     }
   } else {
     if(update_label_time_rest(st) == G_SOURCE_REMOVE){
       st->work = TRUE;
-      g_timeout_add(1, step_buzz, NULL);
+      pthread_cond_signal(&cv_rondas);
     }
   }
 
@@ -865,12 +944,11 @@ gboolean Countdown(gpointer data)
 
   sprintf(digito, "%c%d", '0', st->countdown);
   gtk_label_set_text(GTK_LABEL(st->label), digito);
-  
 
   if(st->countdown == 0){
-    g_timeout_add(1, stepFinal_buzz, NULL);
+    pthread_cond_signal(&cv_final);
   } else if(st->countdown <= 3 && st->countdown > 0){
-    g_timeout_add(1, step_buzz, NULL);
+    pthread_cond_broadcast(&cv_buzz);
   }
 
   if(st->countdown == -1){
@@ -883,7 +961,7 @@ gboolean Countdown(gpointer data)
   } else{
     st->countdown--;
   }
-
+  
   return G_SOURCE_CONTINUE;
 }
 
@@ -1068,6 +1146,8 @@ static void timer(structBuilder* st)
 static void iniciacao_timer(structBuilder* st)
 {
   GtkStyleContext *context;
+  pthread_t thread[4], thread_final;
+  int rc;
 
   GtkCssProvider *provider = gtk_css_provider_new ();
   gtk_css_provider_load_from_path (provider, "timer.css", NULL);  
@@ -1086,6 +1166,38 @@ static void iniciacao_timer(structBuilder* st)
   if(modo == TRUE){
     esconderRondas(st->builder);
     st->work = TRUE;
+  }
+
+  for(int t=0; t<3; t++){
+    rc = pthread_create(&thread[t], NULL, step_buzz, (void *)st);
+    if (rc){
+        printf("ERROR; return code from pthread_create() is %d\n", rc);
+        exit(-1);
+    }
+  }
+
+  rc = pthread_create(&thread[3], NULL, stepFinal_buzz, (void *)st);
+  if (rc){
+    printf("ERROR; return code from pthread_create() is %d\n", rc);
+    exit(-1);
+  }
+  
+  rc = pthread_create(&thread_final, NULL, final_buzz, NULL);
+  if (rc){
+    printf("ERROR; return code from pthread_create() is %d\n", rc);
+    exit(-1);
+  }
+
+  if(modo == 1){
+    pthread_t thread_rondas[2*(st->nRondas-1)];
+
+    for(int t=0; t<2*(st->nRondas-1); t++){
+      rc = pthread_create(&thread_rondas[t], NULL, step_buzz_rondas, NULL);
+      if (rc){
+          printf("ERROR; return code from pthread_create() is %d\n", rc);
+          exit(-1);
+      }
+    }
   }
 
   st->id = g_timeout_add_seconds(1, Countdown, st);
@@ -1624,7 +1736,7 @@ static void menu(structBuilder* st)
 
 int main (int argc, char *argv[])
 {
-  chdir("/home/ubuntu/fitness_timer");
+  //chdir("/home/ubuntu/fitness_timer");
   gtk_init (&argc, &argv);
 
   structBuilder* st = (structBuilder*) malloc(sizeof(structBuilder));
